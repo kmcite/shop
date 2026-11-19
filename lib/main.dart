@@ -1,14 +1,15 @@
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/material.dart';
 import 'package:shop/business/shop_providers.dart';
 
+import 'features/app/app_router.dart';
 import 'features/app/shop_application.dart';
 
 void main() {
-  final navigatorKey = GlobalKey<NavigatorState>();
+  final router = AppRouter();
   runApp(
-    ShopProviders(
-      navigatorKey: navigatorKey,
-      child: ShopApplication(navigatorKey: navigatorKey),
+    ShopScope(
+      router: router,
+      child: ShopApplication(router: router),
     ),
   );
 }

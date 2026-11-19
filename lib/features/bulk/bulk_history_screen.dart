@@ -1,17 +1,19 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/material.dart';
 import 'package:shop/business/shop_cubit.dart';
 
 import '../../models/bulk_shipment_model.dart';
 import '../../ui/format.dart';
 import '../../ui/spacing.dart';
+import '../design/metro.dart';
 import '../widgets/bulk_progress_stepper.dart';
 
 class BulkHistoryScreen extends StatelessWidget {
   const BulkHistoryScreen({super.key});
 
-  static Route<void> route() {
-    return MaterialPageRoute<void>(
+  static Route<void> route(BuildContext context) {
+    return metroRoute(
+      context: context,
       builder: (_) => const BulkHistoryScreen(),
     );
   }
@@ -89,7 +91,7 @@ class _BulkHistoryCard extends StatelessWidget {
     return Material(
       color: scheme.surfaceContainerLow,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.zero,
         side: BorderSide(color: scheme.outlineVariant),
       ),
       clipBehavior: Clip.antiAlias,

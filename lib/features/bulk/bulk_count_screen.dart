@@ -1,25 +1,36 @@
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shop/business/bulk_order_draft_cubit.dart';
 import 'package:shop/business/shop_cubit.dart';
 import '../../models/bulk_shipment_line_model.dart';
+import '../../models/bulk_shipment_model.dart';
 import '../../ui/spacing.dart';
+import '../design/metro.dart';
 import '../widgets/bulk/bulk_ui.dart';
 
 class BulkCountScreen extends StatefulWidget {
   const BulkCountScreen({
     required this.shipmentId,
     this.readOnly = false,
+    this.embedded = false,
+    this.onStepCompleted,
     super.key,
   });
 
   final String shipmentId;
   final bool readOnly;
+  final bool embedded;
+  final VoidCallback? onStepCompleted;
 
-  static Route<void> route(String shipmentId, {bool readOnly = false}) {
-    return MaterialPageRoute<void>(
+  static Route<void> route(
+    BuildContext context,
+    String shipmentId, {
+    bool readOnly = false,
+  }) {
+    return metroRoute(
+      context: context,
       builder: (_) => BulkCountScreen(
         shipmentId: shipmentId,
         readOnly: readOnly,
@@ -32,6 +43,13 @@ class BulkCountScreen extends StatefulWidget {
 }
 
 class _BulkCountScreenState extends State<BulkCountScreen> {
+  BulkShipment? _bulk(BuildContext context) {
+    for (final b in context.watch<ShopCubit>().state.bulkShipments) {
+      if (b.id == widget.shipmentId) return b;
+    }
+    return null;
+  }
+
   final _name = TextEditingController();
   final _qty = TextEditingController(text: '1');
   final _surpriseNameFocus = FocusNode();
@@ -64,7 +82,12 @@ class _BulkCountScreenState extends State<BulkCountScreen> {
         );
     if (!context.mounted) return;
     if (context.read<BulkOrderDraftCubit>().state.error != null) return;
-    Navigator.pop(context);
+    if (widget.onStepCompleted != null) {
+      widget.onStepCompleted!();
+    } else {
+      Navigator.pop(context);
+    }
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Counts saved — set listing prices next')),
     );
@@ -102,22 +125,28 @@ class _BulkCountScreenState extends State<BulkCountScreen> {
       }
     }
 
+    final bulk = _bulk(context);
+    final status =
+        bulk?.status ?? BulkShipmentStatus.received;
+
     return BulkFlowScaffold(
       title: 'Open & count',
-      bottom: widget.readOnly
+      embedded: widget.embedded,
+      bottom: widget.embedded || widget.readOnly
           ? null
           : BulkStickyPrimaryButton(
               label: 'Save counts',
               onPressed: () => _save(context),
             ),
       children: [
-        if (widget.readOnly) const BulkReadOnlyBanner(),
-        if (widget.readOnly) const SizedBox(height: AppSpacing.md),
-        const BulkIntroText(
-          'Counts start from what you ordered — adjust if the box differs. '
-          'Add extra types at the bottom if you find surprises.',
-        ),
-        const SizedBox(height: AppSpacing.xl),
+        BulkStepContextHeader(status: status, stepIndex: 2),
+        if (!widget.readOnly) ...[
+          const BulkIntroText(
+            'Counts start from what you ordered — adjust if the box differs. '
+            'Add extra types at the bottom if you find surprises.',
+          ),
+          const SizedBox(height: AppSpacing.xl),
+        ],
         BulkSection(
           title: 'From your order',
           subtitle: 'Names and quantities you can edit',
@@ -174,21 +203,18 @@ class _BulkCountScreenState extends State<BulkCountScreen> {
                       children: [
                         Expanded(
                           flex: 2,
-                          child: TextField(
+                          child: MetroTextField(
                             controller: _name,
                             focusNode: _surpriseNameFocus,
-                            decoration: const InputDecoration(
-                              labelText: 'Type name',
-                            ),
+                            label: const Text('Type name'),
                             textCapitalization: TextCapitalization.words,
                           ),
                         ),
                         const SizedBox(width: AppSpacing.sm),
                         Expanded(
-                          child: TextField(
+                          child: MetroTextField(
                             controller: _qty,
-                            decoration:
-                                const InputDecoration(labelText: 'Qty'),
+                            label: const Text('Qty'),
                             keyboardType: TextInputType.number,
                             inputFormatters: [
                               FilteringTextInputFormatter.digitsOnly,
@@ -203,7 +229,7 @@ class _BulkCountScreenState extends State<BulkCountScreen> {
                     OutlinedButton.icon(
                       onPressed: () => _addSurprise(context),
                       icon: const Icon(Icons.add),
-                      label: const Text('Add extra type'),
+                      label: const Text('add extra type'),
                     ),
                   ] else if (extras.isEmpty)
                     Text(
@@ -332,20 +358,19 @@ class _CountRowState extends State<_CountRow> {
         children: [
           Expanded(
             flex: 2,
-            child: TextField(
+            child: MetroTextField(
               controller: _name,
-              decoration: InputDecoration(
-                labelText: 'Type',
-                helperText: hint != null ? 'Expected ~$hint' : null,
-              ),
+              label: const Text('Type'),
+              supportingText:
+                  hint != null ? Text('Expected ~$hint') : null,
               onChanged: (_) => _sync(context),
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
-            child: TextField(
+            child: MetroTextField(
               controller: _qty,
-              decoration: const InputDecoration(labelText: 'Counted'),
+              label: const Text('Counted'),
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               onChanged: (_) => _sync(context),

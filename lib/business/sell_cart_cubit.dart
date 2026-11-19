@@ -37,20 +37,30 @@ class SellCartCubit extends Cubit<SellCartState> {
 
   void updateLine({
     required int index,
-    required int quantity,
-    required double unitPrice,
+    int? quantity,
+    double? unitPrice,
   }) {
     final lines = List<SellCartLine>.of(state.lines);
     if (index < 0 || index >= lines.length) return;
-    if (quantity < 1) {
+    final nextQty = quantity ?? lines[index].quantity;
+    if (nextQty < 1) {
       lines.removeAt(index);
     } else {
       lines[index] = lines[index].copyWith(
-        quantity: quantity,
-        unitPrice: unitPrice,
+        quantity: nextQty,
+        unitPrice: unitPrice ?? lines[index].unitPrice,
       );
     }
     emit(state.copyWith(lines: lines));
+  }
+
+  void setQuantity(int index, int quantity) {
+    updateLine(index: index, quantity: quantity);
+  }
+
+  void setUnitPrice(int index, double unitPrice) {
+    if (unitPrice < 0) return;
+    updateLine(index: index, unitPrice: unitPrice);
   }
 
   void removeLine(int index) {
@@ -59,6 +69,21 @@ class SellCartCubit extends Cubit<SellCartState> {
       lines.removeAt(index);
       emit(state.copyWith(lines: lines));
     }
+  }
+
+  /// Max units this line may take given on-hand stock and other cart lines.
+  int maxQuantityFor(int index, int onHand) {
+    if (index < 0 || index >= state.lines.length) return 0;
+    final itemId = state.lines[index].itemId;
+    var reservedElsewhere = 0;
+    for (var i = 0; i < state.lines.length; i++) {
+      if (i == index) continue;
+      if (state.lines[i].itemId == itemId) {
+        reservedElsewhere += state.lines[i].quantity;
+      }
+    }
+    final available = onHand - reservedElsewhere;
+    return available < 1 ? 1 : available;
   }
 
   void addShopItem(ShopItem item, {int quantity = 1, double? unitPrice}) {

@@ -1,21 +1,27 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/material.dart';
 import 'package:shop/business/shop_cubit.dart';
 
 import '../../models/bulk_shipment_model.dart';
 import '../../ui/format.dart' show formatBulkDate, formatMoney;
 import '../../ui/spacing.dart';
+import '../design/metro.dart';
 import '../widgets/bulk/bulk_ui.dart';
-import 'bulk_step_access.dart';
 
 /// Read-only view of the original bulk order (step 1).
 class BulkStepOrderScreen extends StatelessWidget {
-  const BulkStepOrderScreen({required this.shipmentId, super.key});
+  const BulkStepOrderScreen({
+    required this.shipmentId,
+    this.embedded = false,
+    super.key,
+  });
 
   final String shipmentId;
+  final bool embedded;
 
-  static Route<void> route(String shipmentId) {
-    return MaterialPageRoute<void>(
+  static Route<void> route(BuildContext context, String shipmentId) {
+    return metroRoute(
+      context: context,
       builder: (_) => BulkStepOrderScreen(shipmentId: shipmentId),
     );
   }
@@ -40,22 +46,11 @@ class BulkStepOrderScreen extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
-    final showPastStepBanner =
-        BulkStepAccess.isReadOnly(bulk.status, 0) &&
-            bulk.status != BulkShipmentStatus.ordered;
-
     return BulkFlowScaffold(
       title: 'Order details',
+      embedded: embedded,
       children: [
-        if (bulk.status == BulkShipmentStatus.ordered) ...[
-          const BulkIntroText(
-            'Order recorded — use Receive when the lot arrives.',
-          ),
-          const SizedBox(height: AppSpacing.md),
-        ] else if (showPastStepBanner) ...[
-          const BulkReadOnlyBanner(),
-          const SizedBox(height: AppSpacing.md),
-        ],
+        BulkStepContextHeader(status: bulk.status, stepIndex: 0),
         BulkSection(
           title: 'Deal details',
           child: BulkOutlineGroup(
@@ -92,16 +87,7 @@ class BulkStepOrderScreen extends StatelessWidget {
                       for (var i = 0; i < bulk.lines.length; i++)
                         if (!bulk.lines[i].extraFind)
                           BulkListTileRow(
-                            leading: CircleAvatar(
-                              radius: 18,
-                              backgroundColor: scheme.secondaryContainer,
-                              child: Text(
-                                '${i + 1}',
-                                style: theme.textTheme.labelLarge?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
+                            leading: BulkIndexBadge(i + 1),
                             title: bulk.lines[i].name,
                             subtitle:
                                 'Expected ~${bulk.lines[i].expectedQty ?? 0}',

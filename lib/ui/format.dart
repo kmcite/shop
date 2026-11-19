@@ -25,25 +25,23 @@ String formatStock(int quantity) {
 }
 
 /// Clock time for a sale row, e.g. `3:05 PM`.
-/// Short calendar date for bulk history, e.g. `Nov 17, 2026`.
+/// Bulk timeline stamp, e.g. `17-11-2026 5:00pm`.
 String formatBulkDate(DateTime? dateTime) {
   if (dateTime == null) return '—';
-  const months = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
   final local = dateTime.toLocal();
-  return '${months[local.month - 1]} ${local.day}, ${local.year}';
+  final day = local.day.toString().padLeft(2, '0');
+  final month = local.month.toString().padLeft(2, '0');
+  return '$day-$month-${local.year} ${formatBulkClock(local)}';
+}
+
+/// Time portion for [formatBulkDate], e.g. `5:00pm`.
+String formatBulkClock(DateTime dateTime) {
+  final local = dateTime.toLocal();
+  final hour = local.hour;
+  final minute = local.minute.toString().padLeft(2, '0');
+  final hour12 = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+  final period = hour >= 12 ? 'pm' : 'am';
+  return '$hour12:$minute$period';
 }
 
 String formatSaleClock(DateTime soldAt) {

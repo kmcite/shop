@@ -1,23 +1,21 @@
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/material.dart';
+import 'package:metro_ui/metro_ui.dart';
 
-/// Shared spacing scale and reusable paddings so every screen uses the
-/// same rhythm: 16 between sections, 24 inside sheets, 32 for empty states.
+/// Spacing aligned with [MetroSpacing].
 abstract class AppSpacing {
   AppSpacing._();
 
-  static const double xs = 4;
-  static const double sm = 8;
-  static const double md = 12;
-  static const double lg = 16;
-  static const double xl = 24;
-  static const double xxl = 32;
+  static const double xs = MetroSpacing.xxs;
+  static const double sm = MetroSpacing.xs;
+  static const double md = MetroSpacing.sm;
+  static const double lg = MetroSpacing.lg;
+  static const double xl = MetroSpacing.lg;
+  static const double xxl = MetroSpacing.xl;
 
-  /// Horizontal inset for page-level content.
-  static const EdgeInsets page = EdgeInsets.symmetric(horizontal: lg);
+  static const EdgeInsets page =
+      EdgeInsets.symmetric(horizontal: MetroSpacing.lg);
 
-  /// Padding inside modal bottom sheets (add view insets on the bottom).
   static const EdgeInsets sheet = EdgeInsets.fromLTRB(xl, sm, xl, lg);
 
-  /// Uniform inner padding for cards and chip-like surfaces.
-  static const EdgeInsets card = EdgeInsets.all(lg);
+  static const EdgeInsets card = EdgeInsets.all(MetroSpacing.sm);
 }

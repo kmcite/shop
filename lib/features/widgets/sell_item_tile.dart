@@ -1,13 +1,14 @@
 /// Portrait list row optimized for one-thumb selling.
 library;
 
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../models/shop_item_model.dart';
 import '../../ui/format.dart';
 import '../../ui/item_photo.dart';
 import '../../ui/spacing.dart';
+import '../design/metro.dart';
 
 class SellItemTile extends StatelessWidget {
   const SellItemTile({
@@ -33,7 +34,7 @@ class SellItemTile extends StatelessWidget {
     return Material(
       color: _canSell ? scheme.surfaceContainerLow : scheme.surfaceContainerHigh,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.zero,
         side: BorderSide(color: scheme.outlineVariant),
       ),
       clipBehavior: Clip.antiAlias,
@@ -96,26 +97,14 @@ class SellItemTile extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.sm,
-                      vertical: AppSpacing.xs,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _canSell
-                          ? scheme.primaryContainer
-                          : scheme.errorContainer,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      _canSell ? '×${item.quantity}' : '0',
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: _canSell
-                            ? scheme.onPrimaryContainer
-                            : scheme.onErrorContainer,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
+                  MetroTag(
+                    label: _canSell ? '×${item.quantity}' : '0',
+                    color: _canSell
+                        ? MetroColors.cyan
+                        : scheme.errorContainer,
+                    foregroundColor: _canSell
+                        ? Colors.white
+                        : scheme.onErrorContainer,
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   _canSell

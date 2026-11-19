@@ -1,149 +1,104 @@
-import 'package:material_ui/material_ui.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/material.dart';
+import 'package:metro_ui/metro_ui.dart';
 
-/// Material 3 theme with the **expressive** dynamic color scheme variant
-/// (playful hue shifts, higher chroma accents). Widgets read tokens only from
-/// [Theme.of] / [ColorScheme] so light, dark and future tweaks stay centralized.
-ThemeData buildShopTheme(Brightness brightness) {
-  const seed = Color(0xFF14B8A6);
+/// Builds a minimal Material [ThemeData] from Metro color tokens for Scaffold /
+/// AppBar / Icons while Metro widgets read [MetroTheme].
+ThemeData buildShopTheme(
+  Brightness brightness, {
+  Color accentColor = MetroColors.cyan,
+}) {
+  final metro = brightness == Brightness.dark
+      ? MetroThemeData.dark(accentColor: accentColor)
+      : MetroThemeData.light(accentColor: accentColor);
+  final colors = metro.colors;
   final isDark = brightness == Brightness.dark;
 
-  final scheme = ColorScheme.fromSeed(
-    seedColor: seed,
+  final scheme = ColorScheme(
     brightness: brightness,
-    dynamicSchemeVariant: DynamicSchemeVariant.expressive,
-    surface: isDark ? const Color(0xFF101010) : null,
+    primary: colors.accent,
+    onPrimary: colors.onAccent,
+    secondary: colors.accent,
+    onSecondary: colors.onAccent,
+    error: colors.error,
+    onError: colors.onAccent,
+    surface: colors.background,
+    onSurface: colors.foreground,
+    surfaceContainerHighest: colors.surfaceVariant,
+    outline: colors.border,
+    outlineVariant: colors.border.withValues(alpha: 0.45),
   );
 
-  final base = ThemeData(
+  final textTheme = TextTheme(
+    displayLarge: metro.typography.hero,
+    displayMedium: metro.typography.header,
+    displaySmall: metro.typography.header,
+    headlineMedium: metro.typography.subheader,
+    headlineSmall: metro.typography.subheader,
+    titleLarge: metro.typography.title,
+    titleMedium: metro.typography.bodyStrong,
+    titleSmall: metro.typography.bodyStrong,
+    bodyLarge: metro.typography.body,
+    bodyMedium: metro.typography.body,
+    bodySmall: metro.typography.caption,
+    labelLarge: metro.typography.button,
+    labelMedium: metro.typography.caption,
+    labelSmall: metro.typography.caption,
+  );
+
+  return ThemeData(
+    brightness: brightness,
     colorScheme: scheme,
+    textTheme: textTheme,
     useMaterial3: true,
-    brightness: brightness,
-  );
-
-  const cardRadius = BorderRadius.all(Radius.circular(16));
-  const sheetRadius = BorderRadius.vertical(top: Radius.circular(28));
-  const dialogRadius = BorderRadius.all(Radius.circular(28));
-
-  return base.copyWith(
-    scaffoldBackgroundColor: scheme.surfaceContainerLowest,
+    splashFactory: NoSplash.splashFactory,
+    highlightColor: colors.accent.withValues(alpha: 0.12),
+    visualDensity: VisualDensity.compact,
+    scaffoldBackgroundColor: colors.background,
+    canvasColor: colors.background,
+    dividerColor: colors.border.withValues(alpha: 0.45),
+    iconTheme: IconThemeData(color: colors.mutedForeground, size: 22),
+    primaryIconTheme: IconThemeData(color: colors.accent, size: 22),
     appBarTheme: AppBarTheme(
-      centerTitle: false,
       elevation: 0,
       scrolledUnderElevation: 0,
-      surfaceTintColor: Colors.transparent,
-      backgroundColor: scheme.surfaceContainerLowest,
-      foregroundColor: scheme.onSurface,
-      systemOverlayStyle: isDark
-          ? SystemUiOverlayStyle.light
-          : SystemUiOverlayStyle.dark,
-      titleTextStyle: base.textTheme.titleLarge?.copyWith(
-        fontWeight: FontWeight.w600,
-      ),
+      backgroundColor: colors.background,
+      foregroundColor: colors.foreground,
+      centerTitle: false,
+      titleTextStyle: metro.typography.title,
+      iconTheme: IconThemeData(color: colors.foreground),
     ),
     cardTheme: CardThemeData(
       elevation: 0,
-      color: scheme.surfaceContainerLow,
-      surfaceTintColor: Colors.transparent,
-      shape: const RoundedRectangleBorder(borderRadius: cardRadius),
+      color: colors.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
       margin: EdgeInsets.zero,
     ),
-    inputDecorationTheme: InputDecorationTheme(
-      filled: true,
-      fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: scheme.outlineVariant),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: scheme.outlineVariant),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: scheme.primary, width: 2),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: scheme.error),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: scheme.error, width: 2),
-      ),
+    dividerTheme: DividerThemeData(
+      color: colors.border.withValues(alpha: 0.45),
+      thickness: 1,
+      space: 1,
     ),
-    searchBarTheme: SearchBarThemeData(
-      elevation: const WidgetStatePropertyAll(0),
-      backgroundColor: WidgetStatePropertyAll(
-        scheme.surfaceContainerHigh,
-      ),
-      surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
-      shape: WidgetStatePropertyAll(
-        RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(28),
-          side: BorderSide(color: scheme.outlineVariant),
-        ),
-      ),
-      hintStyle: WidgetStatePropertyAll(
-        base.textTheme.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
-      ),
-    ),
-    chipTheme: base.chipTheme.copyWith(
-      side: BorderSide.none,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      labelStyle: base.textTheme.labelLarge,
-    ),
-    snackBarTheme: SnackBarThemeData(
-      behavior: SnackBarBehavior.floating,
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-    ),
-    bottomSheetTheme: BottomSheetThemeData(
-      backgroundColor: scheme.surfaceContainerLow,
-      surfaceTintColor: Colors.transparent,
-      showDragHandle: true,
-      shape: const RoundedRectangleBorder(borderRadius: sheetRadius),
-    ),
-    dialogTheme: DialogThemeData(
-      backgroundColor: scheme.surfaceContainerHigh,
-      surfaceTintColor: Colors.transparent,
-      shape: const RoundedRectangleBorder(borderRadius: dialogRadius),
-    ),
-    navigationBarTheme: NavigationBarThemeData(
-      elevation: 0,
-      height: 72,
-      backgroundColor: scheme.surfaceContainerLow,
-      surfaceTintColor: Colors.transparent,
-      indicatorColor: scheme.secondaryContainer,
-      labelTextStyle: WidgetStateProperty.resolveWith((states) {
-        final selected = states.contains(WidgetState.selected);
-        return base.textTheme.labelMedium?.copyWith(
-          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-        );
-      }),
+    progressIndicatorTheme: ProgressIndicatorThemeData(
+      color: colors.accent,
+      linearTrackColor: colors.surfaceVariant,
     ),
     floatingActionButtonTheme: FloatingActionButtonThemeData(
-      elevation: 2,
-      highlightElevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      backgroundColor: colors.accent,
+      foregroundColor: colors.onAccent,
+      elevation: 0,
+      focusElevation: 0,
+      hoverElevation: 0,
+      highlightElevation: 0,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
     ),
-    dividerTheme: DividerThemeData(
-      color: scheme.outlineVariant.withValues(alpha: 0.6),
-      space: 1,
-      thickness: 1,
-    ),
-    listTileTheme: ListTileThemeData(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-    ),
-    segmentedButtonTheme: SegmentedButtonThemeData(
-      style: ButtonStyle(
-        visualDensity: VisualDensity.compact,
-        shape: WidgetStatePropertyAll(
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
+    snackBarTheme: SnackBarThemeData(
+      backgroundColor: isDark ? colors.surface : colors.foreground,
+      contentTextStyle: metro.typography.body.copyWith(
+        color: isDark ? colors.foreground : colors.background,
       ),
+      behavior: SnackBarBehavior.floating,
+      elevation: 0,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
     ),
   );
 }

@@ -361,18 +361,18 @@ packages:
     dependency: transitive
     description:
       name: jni
-      sha256: "2e91e6087291affd10b31b6c872f3e3ac7dc5d93b51b5ba485d930c8f08bde6c"
+      sha256: "822c3f004742158b80b558773ebed29891f407058d5798992436a68bdf14ccda"
       url: "https://pub.dev"
     source: hosted
-    version: "1.1.2"
+    version: "1.2.0"
   jni_flutter:
     dependency: transitive
     description:
       name: jni_flutter
-      sha256: "0dd33d67797560f66e961a6053882d4df54bd345bf063b8fe7ea133f7ad8b191"
+      sha256: "586594ad345b403bda8a794b0b8a9e34298238b86c2a7d7f15160b092fe9ef3d"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.4+1"
+    version: "1.1.0"
   jni_util:
     dependency: transitive
     description:
@@ -469,6 +469,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.19.0"
+  metro_ui:
+    dependency: "direct main"
+    description:
+      name: metro_ui
+      sha256: "6f7243167c7176a36885ffb0cac50b765d101e5c580e58402f8d09467b7f64c2"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.3.0"
   mime:
     dependency: transitive
     description:
@@ -590,7 +598,7 @@ packages:
     source: hosted
     version: "6.5.4"
   provider:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: provider
       sha256: "4e82183fa20e5ca25703ead7e05de9e4cceed1fbd1eadc1ac3cb6f565a09f272"
@@ -619,21 +627,21 @@ packages:
       path: "../shared_database"
       relative: true
     source: path
-    version: "1.6.0+7"
+    version: "1.7.0+8"
   shared_database_android:
     dependency: transitive
     description:
       path: "../shared_database/shared_database_android"
       relative: true
     source: path
-    version: "0.4.0"
+    version: "0.5.0"
   shared_database_windows:
     dependency: transitive
     description:
       path: "../shared_database/shared_database_windows"
       relative: true
     source: path
-    version: "0.2.0"
+    version: "0.3.0"
   sky_engine:
     dependency: transitive
     description: flutter

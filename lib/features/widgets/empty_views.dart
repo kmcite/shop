@@ -2,11 +2,11 @@
 /// icon badge used by both.
 library;
 
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/material.dart';
 
 import '../../ui/spacing.dart';
 
-/// Tinted circle behind empty-state icons.
+/// Flat Metro glyph plate behind empty-state icons (no Material circle fill).
 class EmptyStateBadge extends StatelessWidget {
   const EmptyStateBadge({
     super.key,
@@ -19,10 +19,15 @@ class EmptyStateBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CircleAvatar(
-      radius: 48,
-      backgroundColor: color.withValues(alpha: 0.12),
-      child: Icon(icon, size: 44, color: color),
+    return Container(
+      width: 88,
+      height: 88,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.zero,
+        border: Border.all(color: color.withValues(alpha: 0.35), width: 1.5),
+      ),
+      child: Icon(icon, size: 40, color: color),
     );
   }
 }

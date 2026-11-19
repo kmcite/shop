@@ -1,59 +1,61 @@
-/// Controller-less search input for the home page.
+/// Metro outlined search input with a stable internal controller.
 library;
 
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/material.dart';
 
-/// The field owns its text through [TextFormField.initialValue] and only
-/// reports edits via [onChanged]; [ShopState.searchQuery] stays the source
-/// of truth. When the query is cleared externally (close/clear buttons),
-/// the field is remounted empty via a key change instead of a controller.
+import '../design/metro.dart';
+
+/// Controlled search field over package [MetroTextField].
 class SearchField extends StatefulWidget {
-  const SearchField({super.key, required this.query, required this.onChanged});
+  const SearchField({
+    super.key,
+    required this.query,
+    required this.onChanged,
+    this.hintText = 'search items\u2026',
+  });
 
   final String query;
   final ValueChanged<String> onChanged;
+  final String hintText;
 
   @override
   State<SearchField> createState() => _SearchFieldState();
 }
 
 class _SearchFieldState extends State<SearchField> {
-  // Mirror of what the field currently shows; diverging from [widget.query]
-  // towards empty can only mean an external clear.
-  late String _text = widget.query;
-  int _generation = 0;
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.query);
+  }
 
   @override
   void didUpdateWidget(covariant SearchField oldWidget) {
     super.didUpdateWidget(oldWidget);
-
-    if (_text.isNotEmpty && widget.query.isEmpty) {
-      _text = '';
-      _generation++; // force TextFormField recreation with empty text
+    if (widget.query != _controller.text) {
+      _controller.value = TextEditingValue(
+        text: widget.query,
+        selection: TextSelection.collapsed(offset: widget.query.length),
+      );
     }
   }
 
   @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return TextFormField(
-      key: ValueKey(_generation),
-      initialValue: _text,
-      onChanged: (value) {
-        _text = value;
-        widget.onChanged(value);
-      },
+    return MetroTextField(
+      controller: _controller,
+      placeholder: widget.hintText,
+      onChanged: widget.onChanged,
+      prefix: const Icon(Icons.search, size: 18),
       textInputAction: TextInputAction.search,
-      decoration: InputDecoration(
-        hintText: 'Search items\u2026',
-        prefixIcon: const Icon(Icons.search),
-        suffixIcon: widget.query.isEmpty
-            ? null
-            : IconButton(
-                tooltip: 'Clear search',
-                icon: const Icon(Icons.close),
-                onPressed: () => widget.onChanged(''),
-              ),
-      ),
     );
   }
 }

@@ -1,12 +1,14 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/material.dart';
 import 'package:shop/business/shop_cubit.dart';
 
 import '../../models/sale_model.dart';
 import '../../ui/format.dart';
 import '../../ui/spacing.dart';
+import '../design/metro.dart';
 import '../widgets/empty_views.dart';
 import '../widgets/sales_summary_card.dart';
+import '../widgets/search_field.dart';
 
 enum _SalesFilter { all, today, week }
 
@@ -24,12 +26,12 @@ class _SalesScreenState extends State<SalesScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final subtle = MetroTheme.of(context).colors.mutedForeground;
     final allSales = context.watch<ShopCubit>().state.sales;
     final filtered = _applyFilters(allSales);
     final groups = _groupByDay(filtered);
 
-    return RefreshIndicator(
+    return MetroRefresh(
       onRefresh: () => context.read<ShopCubit>().refreshInventoryFlow(),
       child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(
@@ -49,51 +51,39 @@ class _SalesScreenState extends State<SalesScreen> {
                 children: [
                   const SalesSummaryCard(),
                   const SizedBox(height: AppSpacing.lg),
-                  SearchBar(
-                    hintText: 'Search sales by item\u2026',
-                    leading: Icon(Icons.search, color: scheme.onSurfaceVariant),
-                    trailing: _query.isEmpty
-                        ? null
-                        : [
-                            IconButton(
-                              tooltip: 'Clear',
-                              icon: const Icon(Icons.close),
-                              onPressed: () => setState(() => _query = ''),
-                            ),
-                          ],
-                    onChanged: (value) => setState(() => _query = value.trim()),
+                  SearchField(
+                    query: _query,
+                    onChanged: (value) =>
+                        setState(() => _query = value.trim()),
+                    hintText: 'search sales by item\u2026',
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  SegmentedButton<_SalesFilter>(
-                    segments: const [
-                      ButtonSegment(
+                  MetroPivotBar<_SalesFilter>(
+                    selected: _filter,
+                    onSelected: (value) => setState(() => _filter = value),
+                    options: const [
+                      MetroPivotOption(
                         value: _SalesFilter.all,
-                        label: Text('All'),
-                        icon: Icon(Icons.history),
+                        label: 'all',
+                        icon: Icons.history,
                       ),
-                      ButtonSegment(
+                      MetroPivotOption(
                         value: _SalesFilter.today,
-                        label: Text('Today'),
-                        icon: Icon(Icons.today_outlined),
+                        label: 'today',
+                        icon: Icons.today_outlined,
                       ),
-                      ButtonSegment(
+                      MetroPivotOption(
                         value: _SalesFilter.week,
-                        label: Text('7 days'),
-                        icon: Icon(Icons.date_range_outlined),
+                        label: '7 days',
+                        icon: Icons.date_range_outlined,
                       ),
                     ],
-                    selected: {_filter},
-                    onSelectionChanged: (value) {
-                      setState(() => _filter = value.first);
-                    },
                   ),
                   if (allSales.isNotEmpty) ...[
                     const SizedBox(height: AppSpacing.sm),
                     Text(
                       _filterSummary(allSales, filtered),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
+                      style: theme.textTheme.bodySmall?.copyWith(color: subtle),
                     ),
                   ],
                 ],
@@ -137,12 +127,11 @@ class _SalesScreenState extends State<SalesScreen> {
               );
               yield SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                sliver: SliverList.separated(
-                  itemCount: group.sales.length,
-                  separatorBuilder: (context, _) =>
-                      const SizedBox(height: AppSpacing.sm),
-                  itemBuilder: (context, index) =>
-                      _SaleCard(sale: group.sales[index]),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) => _SaleTile(sale: group.sales[index]),
+                    childCount: group.sales.length,
+                  ),
                 ),
               );
             }),
@@ -200,7 +189,7 @@ class _SalesScreenState extends State<SalesScreen> {
 
   String _filterSummary(List<ShopSale> all, List<ShopSale> visible) {
     if (_filter == _SalesFilter.all && _query.isEmpty) {
-      return 'Showing all ${all.length} sale${all.length == 1 ? '' : 's'}';
+      return 'showing all ${all.length} sale${all.length == 1 ? '' : 's'}';
     }
     final parts = <String>[];
     if (_filter != _SalesFilter.all) {
@@ -211,7 +200,7 @@ class _SalesScreenState extends State<SalesScreen> {
       });
     }
     if (_query.isNotEmpty) parts.add('matching “$_query”');
-    return 'Showing ${visible.length} of ${all.length} · ${parts.join(', ')}';
+    return 'showing ${visible.length} of ${all.length} · ${parts.join(', ')}';
   }
 }
 
@@ -229,241 +218,167 @@ class _DaySectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final subtle = MetroTheme.of(context).colors.mutedForeground;
 
-    return Wrap(
-      spacing: AppSpacing.sm,
-      runSpacing: AppSpacing.xs,
-      crossAxisAlignment: WrapCrossAlignment.center,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
       children: [
-        Text(
-          label,
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w700,
+        Expanded(
+          child: Text(
+            label.toLowerCase(),
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w200,
+              color: subtle,
+            ),
           ),
         ),
         Text(
           formatMoney(dayTotal),
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: scheme.primary,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: MetroColors.cyan,
           ),
         ),
-        Badge(
-          label: Text('$saleCount'),
-          backgroundColor: scheme.secondaryContainer,
-          textColor: scheme.onSecondaryContainer,
+        const SizedBox(width: MetroSpacing.xs),
+        Text(
+          '· $saleCount',
+          style: theme.textTheme.bodySmall?.copyWith(color: subtle),
         ),
       ],
     );
   }
 }
 
-class _SaleCard extends StatelessWidget {
-  const _SaleCard({required this.sale});
+class _SaleTile extends StatelessWidget {
+  const _SaleTile({required this.sale});
 
   final ShopSale sale;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final subtle = MetroTheme.of(context).colors.mutedForeground;
     final profit = sale.profit;
     final hasDiscount = sale.lines.any(
       (l) => l.listPrice > 0 && l.unitPrice < l.listPrice - 0.001,
     );
 
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () => _showSaleDetail(context),
-        child: Padding(
-          padding: AppSpacing.card,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  CircleAvatar(
-                    radius: 22,
-                    backgroundColor: scheme.primaryContainer,
-                    child: Icon(
-                      Icons.shopping_bag_outlined,
-                      color: scheme.onPrimaryContainer,
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          sale.headline,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        if (sale.isMultiItem) ...[
-                          const SizedBox(height: AppSpacing.xs),
-                          Text(
-                            sale.lines
-                                .map(
-                                  (l) =>
-                                      '${l.itemName} ×${l.quantity}',
-                                )
-                                .join(' · '),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: AppSpacing.xs),
-                        Text(
-                          formatSaleClock(sale.soldAt),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Flexible(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            formatMoney(sale.total),
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                        Text(
-                          sale.isMultiItem
-                              ? '${sale.lineCount} lines · ${sale.quantity} units'
-                              : '×${sale.quantity} · ${formatMoney(sale.unitPrice)}',
-                          textAlign: TextAlign.end,
-                          style: theme.textTheme.labelMedium?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              if (hasDiscount || profit != null) ...[
-                const SizedBox(height: AppSpacing.sm),
-                Wrap(
-                  spacing: AppSpacing.sm,
-                  runSpacing: AppSpacing.xs,
-                  children: [
-                    if (hasDiscount)
-                      _SaleTag(
-                        icon: Icons.local_offer_outlined,
-                        label: 'Below list',
-                        background: scheme.tertiaryContainer,
-                        foreground: scheme.onTertiaryContainer,
-                      ),
-                    if (profit != null)
-                      _SaleTag(
-                        icon: Icons.trending_up,
-                        label:
-                            '${profit >= 0 ? '+' : ''}${formatMoney(profit)}',
-                        background: profit >= 0
-                            ? scheme.primaryContainer
-                            : scheme.errorContainer,
-                        foreground: profit >= 0
-                            ? scheme.onPrimaryContainer
-                            : scheme.onErrorContainer,
-                      ),
-                  ],
-                ),
-              ],
-            ],
+    return MetroListRow(
+      onTap: () => Navigator.of(context).push(
+        metroRoute(context: context, builder: (_) => SaleDetailScreen(sale: sale)),
+      ),
+      leading: Icon(Icons.shopping_bag_outlined, size: 22, color: subtle),
+      title: sale.headline,
+      subtitle: [
+        if (sale.isMultiItem)
+          sale.lines.map((l) => '${l.itemName} ×${l.quantity}').join(' · '),
+        formatSaleClock(sale.soldAt),
+      ].whereType<String>().where((s) => s.isNotEmpty).join('\n'),
+      trailing: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            formatMoney(sale.total),
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
           ),
-        ),
+          const SizedBox(height: 2),
+          Text(
+            sale.isMultiItem
+                ? '${sale.lineCount} lines · ${sale.quantity} units'
+                : '×${sale.quantity} · ${formatMoney(sale.unitPrice)}',
+            style: theme.textTheme.labelMedium?.copyWith(color: subtle),
+          ),
+          if (hasDiscount || profit != null) ...[
+            const SizedBox(height: MetroSpacing.xxs),
+            Wrap(
+              spacing: MetroSpacing.xs,
+              runSpacing: 2,
+              alignment: WrapAlignment.end,
+              children: [
+                if (hasDiscount)
+                  const MetroTag.inline(
+                    icon: Icons.local_offer_outlined,
+                    label: 'below list',
+                  ),
+                if (profit != null)
+                  MetroTag.inline(
+                    icon: Icons.trending_up,
+                    label:
+                        '${profit >= 0 ? '+' : ''}${formatMoney(profit)}',
+                    accent: profit >= 0,
+                    danger: profit < 0,
+                  ),
+              ],
+            ),
+          ],
+        ],
       ),
     );
   }
 
-  void _showSaleDetail(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final profit = sale.profit;
+}
 
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.xl,
-            0,
-            AppSpacing.xl,
-            AppSpacing.xl,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                sale.isMultiItem ? 'Multi-item sale' : sale.headline,
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+class SaleDetailScreen extends StatelessWidget {
+  const SaleDetailScreen({super.key, required this.sale});
+
+  final ShopSale sale;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final profit = sale.profit;
+    final title = (sale.isMultiItem ? 'multi-item sale' : sale.headline)
+        .toLowerCase();
+
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.xl,
+          AppSpacing.lg,
+          AppSpacing.xl,
+          AppSpacing.xxl,
+        ),
+        children: [
+          _DetailRow(label: 'when', value: sale.soldAt.toLocal().toString()),
+          if (sale.isMultiItem)
+            ...sale.lines.map(
+              (l) => _DetailRow(
+                label: l.itemName.toLowerCase(),
+                value:
+                    '×${l.quantity} @ ${formatMoney(l.unitPrice)} = ${formatMoney(l.total)}',
               ),
-              const SizedBox(height: AppSpacing.lg),
-              _DetailRow(label: 'When', value: sale.soldAt.toLocal().toString()),
-              if (sale.isMultiItem)
-                ...sale.lines.map(
-                  (l) => _DetailRow(
-                    label: l.itemName,
-                    value:
-                        '×${l.quantity} @ ${formatMoney(l.unitPrice)} = ${formatMoney(l.total)}',
-                  ),
-                )
-              else ...[
-                _DetailRow(
-                  label: 'Quantity',
-                  value: '${sale.quantity} unit${sale.quantity == 1 ? '' : 's'}',
-                ),
-                _DetailRow(
-                  label: 'Unit price',
-                  value: formatMoney(sale.unitPrice),
-                ),
-                if (sale.listPrice > 0)
-                  _DetailRow(
-                    label: 'List price',
-                    value: formatMoney(sale.listPrice),
-                  ),
-              ],
-              _DetailRow(label: 'Total', value: formatMoney(sale.total)),
-              if (profit != null)
-                _DetailRow(
-                  label: 'Est. profit',
-                  value: formatMoney(profit),
-                  valueColor: profit >= 0 ? scheme.primary : scheme.error,
-                ),
-              const SizedBox(height: AppSpacing.lg),
-              FilledButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Close'),
+            )
+          else ...[
+            _DetailRow(
+              label: 'quantity',
+              value: '${sale.quantity} unit${sale.quantity == 1 ? '' : 's'}',
+            ),
+            _DetailRow(
+              label: 'unit price',
+              value: formatMoney(sale.unitPrice),
+            ),
+            if (sale.listPrice > 0)
+              _DetailRow(
+                label: 'list price',
+                value: formatMoney(sale.listPrice),
               ),
-            ],
-          ),
-        );
-      },
+          ],
+          _DetailRow(label: 'total', value: formatMoney(sale.total)),
+          if (profit != null)
+            _DetailRow(
+              label: 'est. profit',
+              value: formatMoney(profit),
+              valueColor: profit >= 0
+                  ? MetroColors.cyan
+                  : theme.colorScheme.error,
+            ),
+        ],
+      ),
     );
   }
 }
@@ -482,7 +397,7 @@ class _DetailRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final subtle = MetroTheme.of(context).colors.mutedForeground;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -491,9 +406,7 @@ class _DetailRow extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: scheme.onSurfaceVariant,
-              ),
+              style: theme.textTheme.bodyMedium?.copyWith(color: subtle),
             ),
           ),
           Text(
@@ -509,53 +422,11 @@ class _DetailRow extends StatelessWidget {
   }
 }
 
-class _SaleTag extends StatelessWidget {
-  const _SaleTag({
-    required this.icon,
-    required this.label,
-    required this.background,
-    required this.foreground,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color background;
-  final Color foreground;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xs,
-      ),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: foreground),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: foreground,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _SalesEmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final subtle = MetroTheme.of(context).colors.mutedForeground;
 
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.xxl),
@@ -564,23 +435,21 @@ class _SalesEmptyState extends StatelessWidget {
         children: [
           EmptyStateBadge(
             icon: Icons.receipt_long_outlined,
-            color: theme.colorScheme.primary,
+            color: subtle,
           ),
           const SizedBox(height: AppSpacing.xl),
           Text(
-            'No sales yet',
+            'no sales yet',
             style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w200,
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            'Build a sale on the Sell tab (one or many items), then '
-            'complete it — each receipt shows here.',
+            'build a sale on the sell tab, then complete it — '
+            'each receipt shows here.',
             textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+            style: theme.textTheme.bodyMedium?.copyWith(color: subtle),
           ),
         ],
       ),
@@ -596,6 +465,7 @@ class _NoMatchingSales extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final subtle = MetroTheme.of(context).colors.mutedForeground;
 
     return Center(
       child: Padding(
@@ -605,28 +475,25 @@ class _NoMatchingSales extends StatelessWidget {
           children: [
             EmptyStateBadge(
               icon: Icons.filter_alt_off_outlined,
-              color: theme.colorScheme.tertiary,
+              color: subtle,
             ),
             const SizedBox(height: AppSpacing.xl),
             Text(
-              'Nothing matches',
+              'nothing matches',
               style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w300,
               ),
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
-              'Try another time range or clear your search.',
+              'try another time range or clear your search.',
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+              style: theme.textTheme.bodyMedium?.copyWith(color: subtle),
             ),
             const SizedBox(height: AppSpacing.xl),
-            FilledButton.tonalIcon(
+            OutlinedButton(
               onPressed: onClear,
-              icon: const Icon(Icons.clear_all),
-              label: const Text('Reset filters'),
+              child: const Text('reset filters'),
             ),
           ],
         ),

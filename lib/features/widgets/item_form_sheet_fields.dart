@@ -1,13 +1,13 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/services.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/material.dart';
 import 'package:shop/business/item_form_cubit.dart';
 
 import '../../repositories/item_photo_store.dart';
 import '../../ui/item_photo.dart';
 import '../../ui/spacing.dart';
 
-/// Shared name / price / cost / qty / photo fields for item add & edit sheets.
+/// Shared name / price / cost / qty / photo fields for item add & edit screens.
 class ItemFormSheetFields extends StatelessWidget {
   const ItemFormSheetFields({super.key, required this.isEdit});
 
@@ -34,7 +34,7 @@ class ItemFormSheetFields extends StatelessWidget {
               imagePath: form.imagePath,
               width: 64,
               height: 64,
-              borderRadius: 16,
+              borderRadius: 0,
               fallback: _PhotoFallback(name: form.name),
             ),
             const SizedBox(width: AppSpacing.md),
@@ -151,14 +151,15 @@ class _PhotoFallback extends StatelessWidget {
       width: 64,
       height: 64,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.zero,
         color: scheme.primary.withValues(alpha: 0.12),
+        border: Border.all(color: scheme.primary, width: 1.5),
       ),
       child: Center(
         child: Text(
           initial,
           style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w600,
             color: scheme.primary,
           ),
         ),

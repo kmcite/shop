@@ -1,12 +1,11 @@
-/// "Sales so far" card on the Sell page: today's take, all-time
-/// revenue, units sold and estimated profit — all read from [ShopState].
+/// "Sales so far" panel: today's take, all-time revenue, units and profit.
 library;
 
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/material.dart';
 import 'package:shop/business/shop_cubit.dart';
 import '../../ui/format.dart';
-import '../../ui/spacing.dart';
+import '../design/metro.dart';
 
 class SalesSummaryCard extends StatelessWidget {
   const SalesSummaryCard({super.key});
@@ -14,7 +13,7 @@ class SalesSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final subtle = MetroTheme.of(context).colors.mutedForeground;
     final sales = context.watch<ShopCubit>().state.sales;
 
     final now = DateTime.now();
@@ -36,83 +35,73 @@ class SalesSummaryCard extends StatelessWidget {
       }
     }
 
-    return Material(
-      color: scheme.surfaceContainerLow,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: scheme.outlineVariant),
-      ),
-      child: Padding(
-        padding: AppSpacing.card,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    return MetroPanel(
+      margin: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.payments_outlined, size: 18, color: subtle),
+              const SizedBox(width: MetroSpacing.xs),
+              Expanded(
+                child: Text(
+                  'sales',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w300,
+                  ),
+                ),
+              ),
+              if (sales.isNotEmpty)
+                Text(
+                  '${sales.length} sale${sales.length == 1 ? '' : 's'}',
+                  style: theme.textTheme.bodySmall?.copyWith(color: subtle),
+                ),
+            ],
+          ),
+          const SizedBox(height: MetroSpacing.sm),
+          if (sales.isEmpty)
+            Text(
+              'no sales yet — completed sales will add up here.',
+              style: theme.textTheme.bodySmall?.copyWith(color: subtle),
+            )
+          else ...[
+            Text(
+              formatMoney(revenue),
+              style: theme.textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.w200,
+                color: MetroColors.cyan,
+              ),
+            ),
+            Text(
+              'all-time revenue',
+              style: theme.textTheme.bodySmall?.copyWith(color: subtle),
+            ),
+            const SizedBox(height: MetroSpacing.sm),
+            const Divider(height: 1),
+            const SizedBox(height: MetroSpacing.sm),
             Row(
               children: [
-                Icon(Icons.payments_outlined, size: 20, color: scheme.primary),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Text(
-                    'Sales',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                _SalesStat(
+                  label: 'today',
+                  value: formatMoney(todayTotal),
+                  hint: '$todayCount sale${todayCount == 1 ? '' : 's'}',
                 ),
-                if (sales.isNotEmpty)
-                  Text(
-                    '${sales.length} sale${sales.length == 1 ? '' : 's'}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
+                _SalesStat(
+                  label: 'units sold',
+                  value: '$units',
+                ),
+                _SalesStat(
+                  label: 'est. profit',
+                  value: profit != 0 ? formatMoney(profit) : '—',
+                  tint: profit < 0
+                      ? theme.colorScheme.error
+                      : MetroColors.cyan,
+                ),
               ],
             ),
-            const SizedBox(height: AppSpacing.md),
-            if (sales.isEmpty)
-              Text(
-                'No sales yet — completed sales will add up here.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
-              )
-            else ...[
-              Text(
-                formatMoney(revenue),
-                style: theme.textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                'all-time revenue',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              const Divider(height: 1),
-              const SizedBox(height: AppSpacing.md),
-              Row(
-                children: [
-                  _SalesStat(
-                    label: 'Today',
-                    value: formatMoney(todayTotal),
-                    hint: '$todayCount sale${todayCount == 1 ? '' : 's'}',
-                  ),
-                  _SalesStat(
-                    label: 'Units sold',
-                    value: '$units',
-                  ),
-                  _SalesStat(
-                    label: 'Est. profit',
-                    value: profit != 0 ? formatMoney(profit) : '—',
-                    tint: profit >= 0 ? scheme.primary : scheme.error,
-                  ),
-                ],
-              ),
-            ],
           ],
-        ),
+        ],
       ),
     );
   }
@@ -134,7 +123,7 @@ class _SalesStat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final subtle = MetroTheme.of(context).colors.mutedForeground;
 
     return Expanded(
       child: Column(
@@ -142,26 +131,22 @@ class _SalesStat extends StatelessWidget {
         children: [
           Text(
             label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: scheme.onSurfaceVariant,
-            ),
+            style: theme.textTheme.bodySmall?.copyWith(color: subtle),
           ),
-          const SizedBox(height: AppSpacing.xs),
+          const SizedBox(height: MetroSpacing.xxs),
           Text(
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w600,
               color: tint,
             ),
           ),
           if (hint != null)
             Text(
               hint!,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: scheme.onSurfaceVariant,
-              ),
+              style: theme.textTheme.bodySmall?.copyWith(color: subtle),
             ),
         ],
       ),

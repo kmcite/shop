@@ -1,16 +1,19 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/material.dart';
 import 'package:shop/business/bulk_order_draft_cubit.dart';
 import 'package:shop/business/shop_cubit.dart';
+
 import '../../ui/spacing.dart';
+import '../design/metro.dart';
 import '../widgets/bulk/bulk_ui.dart';
 
 class BulkOrderScreen extends StatelessWidget {
   const BulkOrderScreen({super.key});
 
-  static Route<void> route() {
-    return MaterialPageRoute<void>(
+  static Route<void> route(BuildContext context) {
+    return metroRoute(
+      context: context,
       builder: (_) => const BulkOrderScreen(),
     );
   }
@@ -47,16 +50,16 @@ class _BulkOrderScreenBodyState extends State<_BulkOrderScreenBody> {
     final name = _lineName.text.trim();
     final qty = int.tryParse(_lineQty.text.trim()) ?? 0;
     if (name.isEmpty || qty < 1) {
-      context
-          .read<BulkOrderDraftCubit>()
-          .setError('Enter item name and quantity.');
+      context.read<BulkOrderDraftCubit>().setError(
+        'Enter item name and quantity.',
+      );
       return;
     }
     context.read<BulkOrderDraftCubit>().upsertExpectedLine(
-          index: -1,
-          name: name,
-          expectedQty: qty,
-        );
+      index: -1,
+      name: name,
+      expectedQty: qty,
+    );
     _lineName.clear();
     _lineQty.text = '1';
     context.read<BulkOrderDraftCubit>().setError(null);
@@ -71,8 +74,8 @@ class _BulkOrderScreenBodyState extends State<_BulkOrderScreenBody> {
   Future<void> _save(BuildContext context) async {
     FocusScope.of(context).unfocus();
     await context.read<ShopCubit>().saveNewBulkOrder(
-          context.read<BulkOrderDraftCubit>(),
-        );
+      context.read<BulkOrderDraftCubit>(),
+    );
     if (!context.mounted) return;
     final err = context.read<BulkOrderDraftCubit>().state.error;
     if (err != null) return;
@@ -107,25 +110,23 @@ class _BulkOrderScreenBodyState extends State<_BulkOrderScreenBody> {
           child: BulkOutlineGroup(
             child: Column(
               children: [
-                TextField(
-                  decoration: const InputDecoration(
-                    labelText: 'Seller / source',
-                    prefixIcon: Icon(Icons.store_outlined),
-                  ),
+                MetroTextField(
+                  label: const Text('Seller / source'),
+                  prefix: const Icon(Icons.store_outlined, size: 18),
                   textCapitalization: TextCapitalization.words,
                   textInputAction: TextInputAction.next,
                   onChanged: (v) =>
                       context.read<BulkOrderDraftCubit>().setSeller(v),
                 ),
                 const SizedBox(height: AppSpacing.md),
-                TextField(
-                  decoration: const InputDecoration(
-                    labelText: 'Agreed bulk price',
-                    prefixIcon: Icon(Icons.payments_outlined),
-                    helperText: 'What you will pay for the whole lot',
+                MetroTextField(
+                  label: const Text('Agreed bulk price'),
+                  prefix: const Icon(Icons.payments_outlined, size: 18),
+                  supportingText:
+                      const Text('What you will pay for the whole lot'),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
                   ),
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
                   ],
@@ -134,13 +135,11 @@ class _BulkOrderScreenBodyState extends State<_BulkOrderScreenBody> {
                       context.read<BulkOrderDraftCubit>().setAgreedPrice(v),
                 ),
                 const SizedBox(height: AppSpacing.md),
-                TextField(
-                  decoration: const InputDecoration(
-                    labelText: 'Promised quality',
-                    prefixIcon: Icon(Icons.grade_outlined),
-                    helperText: 'Grade, condition, brand mix, etc.',
-                    alignLabelWithHint: true,
-                  ),
+                MetroTextField(
+                  label: const Text('Promised quality'),
+                  prefix: const Icon(Icons.grade_outlined, size: 18),
+                  supportingText:
+                      const Text('Grade, condition, brand mix, etc.'),
                   minLines: 2,
                   maxLines: 4,
                   textCapitalization: TextCapitalization.sentences,
@@ -162,7 +161,9 @@ class _BulkOrderScreenBodyState extends State<_BulkOrderScreenBody> {
               children: [
                 if (draft.lines.isEmpty)
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.sm,
+                    ),
                     child: Text(
                       'No types yet — add the first one below.',
                       style: theme.textTheme.bodySmall?.copyWith(
@@ -182,26 +183,14 @@ class _BulkOrderScreenBodyState extends State<_BulkOrderScreenBody> {
                         alignment: Alignment.centerRight,
                         margin: const EdgeInsets.only(bottom: AppSpacing.sm),
                         padding: const EdgeInsets.only(right: AppSpacing.lg),
-                        decoration: BoxDecoration(
-                          color: scheme.errorContainer,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                        color: scheme.errorContainer,
                         child: Icon(
                           Icons.delete_outline,
                           color: scheme.onErrorContainer,
                         ),
                       ),
                       child: BulkListTileRow(
-                        leading: CircleAvatar(
-                          radius: 18,
-                          backgroundColor: scheme.secondaryContainer,
-                          child: Text(
-                            '${i + 1}',
-                            style: theme.textTheme.labelLarge?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
+                        leading: BulkIndexBadge(i + 1),
                         title: line.name,
                         subtitle: 'Expected ~${line.expectedQty ?? 0}',
                       ),
@@ -213,13 +202,10 @@ class _BulkOrderScreenBodyState extends State<_BulkOrderScreenBody> {
                   children: [
                     Expanded(
                       flex: 2,
-                      child: TextField(
+                      child: MetroTextField(
                         controller: _lineName,
                         focusNode: _typeNameFocus,
-                        decoration: const InputDecoration(
-                          labelText: 'Type name',
-                          isDense: true,
-                        ),
+                        label: const Text('Type name'),
                         textCapitalization: TextCapitalization.words,
                         textInputAction: TextInputAction.next,
                         onSubmitted: (_) => _typeQtyFocus.requestFocus(),
@@ -227,13 +213,10 @@ class _BulkOrderScreenBodyState extends State<_BulkOrderScreenBody> {
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
-                      child: TextField(
+                      child: MetroTextField(
                         controller: _lineQty,
                         focusNode: _typeQtyFocus,
-                        decoration: const InputDecoration(
-                          labelText: 'Qty',
-                          isDense: true,
-                        ),
+                        label: const Text('Qty'),
                         keyboardType: TextInputType.number,
                         inputFormatters: [
                           FilteringTextInputFormatter.digitsOnly,

@@ -1,27 +1,38 @@
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shop/business/bulk_order_draft_cubit.dart';
 import 'package:shop/business/shop_cubit.dart';
+import '../../models/bulk_shipment_model.dart';
 import '../../../repositories/item_photo_store.dart';
 import '../../ui/format.dart';
 import '../../ui/item_photo.dart';
 import '../../ui/spacing.dart';
+import '../design/metro.dart';
 import '../widgets/bulk/bulk_ui.dart';
 
 class BulkPriceScreen extends StatefulWidget {
   const BulkPriceScreen({
     required this.shipmentId,
     this.readOnly = false,
+    this.embedded = false,
+    this.onStepCompleted,
     super.key,
   });
 
   final String shipmentId;
   final bool readOnly;
+  final bool embedded;
+  final VoidCallback? onStepCompleted;
 
-  static Route<void> route(String shipmentId, {bool readOnly = false}) {
-    return MaterialPageRoute<void>(
+  static Route<void> route(
+    BuildContext context,
+    String shipmentId, {
+    bool readOnly = false,
+  }) {
+    return metroRoute(
+      context: context,
       builder: (_) => BulkPriceScreen(
         shipmentId: shipmentId,
         readOnly: readOnly,
@@ -60,33 +71,48 @@ class _BulkPriceScreenState extends State<BulkPriceScreen> {
         );
     if (!context.mounted) return;
     if (context.read<BulkOrderDraftCubit>().state.error != null) return;
-    Navigator.pop(context);
+    if (widget.onStepCompleted != null) {
+      widget.onStepCompleted!();
+    } else {
+      Navigator.pop(context);
+    }
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Listing prices saved')),
     );
+  }
+
+  BulkShipmentStatus _bulkStatus(BuildContext context) {
+    for (final b in context.watch<ShopCubit>().state.bulkShipments) {
+      if (b.id == widget.shipmentId) return b.status;
+    }
+    return BulkShipmentStatus.counted;
   }
 
   @override
   Widget build(BuildContext context) {
     final draft = context.watch<BulkOrderDraftCubit>().state;
     final defaultCost = _defaultCost(context);
+    final status = _bulkStatus(context);
     return BulkFlowScaffold(
       title: 'Set listing prices',
-      bottom: widget.readOnly
+      embedded: widget.embedded,
+      bottom: widget.embedded || widget.readOnly
           ? null
           : BulkStickyPrimaryButton(
               label: 'Save prices',
               onPressed: () => _save(context),
             ),
       children: [
-        if (widget.readOnly) const BulkReadOnlyBanner(),
-        if (widget.readOnly) const SizedBox(height: AppSpacing.md),
-        BulkIntroText(
-          'Your blended cost is about ${formatMoney(defaultCost)} per unit '
-          '(lot + delivery ÷ total units). Set list prices — you can still '
-          'negotiate at sale time.',
-        ),
-        const SizedBox(height: AppSpacing.xl),
+        BulkStepContextHeader(status: status, stepIndex: 3),
+        if (!widget.readOnly) ...[
+          BulkIntroText(
+            'Your blended cost is about ${formatMoney(defaultCost)} per unit '
+            '(lot + delivery ÷ total units). Set list prices — you can still '
+            'negotiate at sale time.',
+          ),
+          const SizedBox(height: AppSpacing.xl),
+        ],
         BulkSection(
           title: 'Listing prices',
           child: Column(
@@ -139,6 +165,8 @@ class _PriceRow extends StatefulWidget {
 }
 
 class _PriceRowState extends State<_PriceRow> {
+  static const _photoSize = 56.0;
+
   late final TextEditingController _price;
   String? _image;
 
@@ -175,82 +203,82 @@ class _PriceRowState extends State<_PriceRow> {
     _push(context);
   }
 
+  Widget _photoSlot(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    final photo = ItemPhoto(
+      imagePath: _image,
+      width: _photoSize,
+      height: _photoSize,
+      borderRadius: 0,
+      fallback: Container(
+        width: _photoSize,
+        height: _photoSize,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.zero,
+          border: Border.all(color: scheme.outlineVariant),
+          color: MetroTheme.of(context).surfaceColor,
+        ),
+        child: Icon(
+          Icons.add_a_photo_outlined,
+          size: 26,
+          color: MetroColors.cyan,
+        ),
+      ),
+    );
+
+    if (widget.readOnly) return photo;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _photo(context),
+        borderRadius: BorderRadius.zero,
+        child: photo,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final price = widget.listPrice ?? double.tryParse(_price.text.trim());
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          widget.name,
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        Text(
-          '${widget.qty} units · cost ${formatMoney(widget.unitCost)}',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        if (widget.readOnly)
-          Row(
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              ItemPhoto(
-                imagePath: _image,
-                width: 56,
-                height: 56,
-                borderRadius: 12,
-                fallback: CircleAvatar(
-                  child: Text(
-                    widget.name.isNotEmpty ? widget.name[0].toUpperCase() : '?',
-                  ),
+              Text(
+                widget.name,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Text(
+              Text(
+                '${widget.qty} units · cost ${formatMoney(widget.unitCost)}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              if (widget.readOnly)
+                Text(
                   price != null && price > 0
                       ? 'List ${formatMoney(price)}'
                       : 'No list price',
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
-                    color: theme.colorScheme.primary,
+                    color: scheme.primary,
                   ),
-                ),
-              ),
-            ],
-          )
-        else
-          Row(
-            children: [
-              ItemPhoto(
-                imagePath: _image,
-                width: 56,
-                height: 56,
-                borderRadius: 12,
-                fallback: CircleAvatar(
-                  child: Text(
-                    widget.name.isNotEmpty ? widget.name[0].toUpperCase() : '?',
-                  ),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              OutlinedButton.icon(
-                onPressed: () => _photo(context),
-                icon: const Icon(Icons.photo_camera_outlined),
-                label: const Text('Photo'),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: TextField(
+                )
+              else
+                MetroTextField(
                   controller: _price,
-                  decoration: const InputDecoration(
-                    labelText: 'List price',
-                  ),
+                  label: const Text('List price'),
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [
@@ -258,9 +286,11 @@ class _PriceRowState extends State<_PriceRow> {
                   ],
                   onChanged: (_) => _push(context),
                 ),
-              ),
             ],
           ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        _photoSlot(context),
       ],
     );
   }

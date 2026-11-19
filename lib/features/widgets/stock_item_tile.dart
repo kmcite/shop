@@ -1,12 +1,12 @@
 /// Portrait-friendly inventory row: photo, pricing, stock, actions.
 library;
 
-import 'package:material_ui/material_ui.dart';
-
+import 'package:flutter/material.dart';
 import '../../models/shop_item_model.dart';
 import '../../ui/format.dart';
 import '../../ui/item_photo.dart';
 import '../../ui/spacing.dart';
+import '../design/metro.dart';
 
 class StockItemTile extends StatelessWidget {
   const StockItemTile({
@@ -31,9 +31,8 @@ class StockItemTile extends StatelessWidget {
     final tone = _stockTone(scheme, item.quantity);
 
     return Material(
-      color: scheme.surfaceContainerLow,
+      color: scheme.surface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: scheme.outlineVariant),
       ),
       clipBehavior: Clip.antiAlias,
@@ -108,22 +107,10 @@ class StockItemTile extends StatelessWidget {
                     ),
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.sm,
-                    vertical: AppSpacing.xs,
-                  ),
-                  decoration: BoxDecoration(
-                    color: tone.background,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '${item.quantity}',
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: tone.foreground,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
+                MetroTag(
+                  label: '${item.quantity}',
+                  color: tone.background,
+                  foregroundColor: tone.foreground,
                 ),
               ],
             ),
@@ -136,7 +123,7 @@ class StockItemTile extends StatelessWidget {
                 FilledButton.tonalIcon(
                   onPressed: onRestock,
                   icon: const Icon(Icons.add_box_outlined, size: 18),
-                  label: const Text('Buy'),
+                  label: const Text('buy'),
                   style: FilledButton.styleFrom(
                     visualDensity: VisualDensity.compact,
                   ),
@@ -144,15 +131,26 @@ class StockItemTile extends StatelessWidget {
                 OutlinedButton.icon(
                   onPressed: onEdit,
                   icon: const Icon(Icons.edit_outlined, size: 18),
-                  label: const Text('Edit'),
+                  label: const Text('edit'),
                   style: OutlinedButton.styleFrom(
                     visualDensity: VisualDensity.compact,
                   ),
                 ),
-                IconButton(
-                  tooltip: 'Remove',
+                MetroIconButton(
+                  semanticLabel: 'Remove',
                   onPressed: onDelete,
-                  icon: Icon(Icons.delete_outline, color: scheme.error),
+                  icon: Icon(
+                    Icons.delete_outline,
+                    size: 20,
+                    color: scheme.error,
+                  ),
+                  style: MetroButtonStyle(
+                    minimumSize: const Size.square(40),
+                    padding: EdgeInsets.zero,
+                    borderColor: WidgetStatePropertyAll(
+                      scheme.error.withValues(alpha: 0.55),
+                    ),
+                  ),
                 ),
               ],
             ),

@@ -1,10 +1,10 @@
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
-
+import 'package:flutter/material.dart';
 import '../../models/shop_item_model.dart';
 import '../../ui/format.dart';
 import '../../ui/item_photo.dart';
 import '../../ui/spacing.dart';
+import '../design/metro.dart';
 
 class SellSheetResult {
   const SellSheetResult(this.count, this.unitPrice);
@@ -18,24 +18,21 @@ Future<SellSheetResult?> openSellSheet(
   BuildContext context,
   ShopItem item,
 ) {
-  return showModalBottomSheet<SellSheetResult>(
-    context: context,
-    isScrollControlled: true,
-    showDragHandle: true,
-    builder: (context) => _SellSheet(item: item),
+  return Navigator.of(context).push<SellSheetResult>(
+    metroRoute(context: context, builder: (_) => SellItemScreen(item: item)),
   );
 }
 
-class _SellSheet extends StatefulWidget {
-  const _SellSheet({required this.item});
+class SellItemScreen extends StatefulWidget {
+  const SellItemScreen({super.key, required this.item});
 
   final ShopItem item;
 
   @override
-  State<_SellSheet> createState() => _SellSheetState();
+  State<SellItemScreen> createState() => _SellItemScreenState();
 }
 
-class _SellSheetState extends State<_SellSheet> {
+class _SellItemScreenState extends State<SellItemScreen> {
   late int _count = widget.item.quantity > 0 ? 1 : 0;
   late final TextEditingController _priceCtrl = TextEditingController(
     text: _priceText(widget.item.price),
@@ -77,158 +74,149 @@ class _SellSheetState extends State<_SellSheet> {
     final total = unitPrice * _count;
     final canSell = _count > 0 && item.inStock && unitPrice >= 0;
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        AppSpacing.xl,
-        AppSpacing.sm,
-        AppSpacing.xl,
-        AppSpacing.xl + MediaQuery.paddingOf(context).bottom,
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('Sell', style: theme.textTheme.titleLarge),
-            const SizedBox(height: AppSpacing.sm),
-            Row(
-              children: [
-                ItemPhotoBadge(item: item, size: 52),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Text.rich(
-                    TextSpan(
-                      text: item.name,
-                      children: [
-                        TextSpan(
-                          text: '  ·  list ${formatMoney(item.price)}',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                    style: theme.textTheme.titleMedium,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Row(
-              children: [
-                IconButton(
-                  tooltip: 'Decrease',
-                  onPressed: _count > 1 ? () => _bump(-1) : null,
-                  icon: const Icon(Icons.remove),
-                ),
-                Expanded(
-                  child: Column(
+    return Scaffold(
+      appBar: AppBar(title: const Text('sell')),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.xl,
+          AppSpacing.lg,
+          AppSpacing.xl,
+          AppSpacing.xxl,
+        ),
+        children: [
+          Row(
+            children: [
+              ItemPhotoBadge(item: item, size: 52),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Text.rich(
+                  TextSpan(
+                    text: item.name,
                     children: [
-                      Text(
-                        '$_count',
-                        style: theme.textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
+                      TextSpan(
+                        text: '  ·  list ${formatMoney(item.price)}',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
-                      ),
-                      Text(
-                        'of ${item.quantity} in stock',
-                        style: theme.textTheme.bodySmall,
                       ),
                     ],
                   ),
+                  style: theme.textTheme.titleMedium,
                 ),
-                IconButton(
-                  tooltip: 'Increase',
-                  onPressed: _count < item.quantity ? () => _bump(1) : null,
-                  icon: const Icon(Icons.add),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            TextFormField(
-              controller: _priceCtrl,
-              onChanged: (_) => setState(() {}),
-              decoration: InputDecoration(
-                labelText: 'Price per unit',
-                prefixIcon: const Icon(Icons.sell_outlined),
-                suffixText: '/ unit',
               ),
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Row(
+            children: [
+              IconButton(
+                tooltip: 'Decrease',
+                onPressed: _count > 1 ? () => _bump(-1) : null,
+                icon: const Icon(Icons.remove),
               ),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Wrap(
-              spacing: AppSpacing.sm,
-              runSpacing: AppSpacing.sm,
-              children: [
-                _PriceChip(
-                  label: 'List',
-                  onTap: () => _setPrice(item.price),
-                ),
-                _PriceChip(
-                  label: '−10%',
-                  onTap: () => _setPrice(item.price * 0.9),
-                ),
-                _PriceChip(
-                  label: '−20%',
-                  onTap: () => _setPrice(item.price * 0.8),
-                ),
-                if (item.hasCost)
-                  _PriceChip(
-                    label: 'At cost',
-                    onTap: () => _setPrice(item.costPrice),
-                  ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            _MarginHint(item: item, unitPrice: unitPrice),
-            const SizedBox(height: AppSpacing.lg),
-            Container(
-              padding: AppSpacing.card,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: theme.colorScheme.surfaceContainerHighest
-                    .withValues(alpha: 0.4),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Total', style: theme.textTheme.titleMedium),
-                  Text(
-                    formatMoney(total),
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.bold,
+              Expanded(
+                child: Column(
+                  children: [
+                    Text(
+                      '$_count',
+                      style: theme.textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                ],
+                    Text(
+                      'of ${item.quantity} in stock',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ],
+                ),
               ),
+              IconButton(
+                tooltip: 'Increase',
+                onPressed: _count < item.quantity ? () => _bump(1) : null,
+                icon: const Icon(Icons.add),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          MetroTextField(
+            controller: _priceCtrl,
+            label: const Text('Price per unit'),
+            prefix: const Icon(Icons.sell_outlined, size: 18),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+            ],
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: [
+              _PriceChip(label: 'List', onTap: () => _setPrice(item.price)),
+              _PriceChip(
+                label: '−10%',
+                onTap: () => _setPrice(item.price * 0.9),
+              ),
+              _PriceChip(
+                label: '−20%',
+                onTap: () => _setPrice(item.price * 0.8),
+              ),
+              if (item.hasCost)
+                _PriceChip(
+                  label: 'At cost',
+                  onTap: () => _setPrice(item.costPrice),
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _MarginHint(item: item, unitPrice: unitPrice),
+          const SizedBox(height: AppSpacing.lg),
+          MetroPanel(
+            margin: EdgeInsets.zero,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Total', style: theme.textTheme.titleMedium),
+                Text(
+                  formatMoney(total),
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: AppSpacing.xl),
-            FilledButton(
+          ),
+        ],
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.xl,
+            AppSpacing.sm,
+            AppSpacing.xl,
+            AppSpacing.lg,
+          ),
+          child: SizedBox(
+            width: double.infinity,
+            child: MetroButton.accent(
               onPressed: canSell
-                  ? () =>
-                      Navigator.pop(context, SellSheetResult(_count, unitPrice))
+                  ? () => Navigator.pop(
+                        context,
+                        SellSheetResult(_count, unitPrice),
+                      )
                   : null,
+              style: const MetroButtonStyle(minimumSize: Size(0, 44)),
               child: Text(canSell ? 'Add to sale' : 'Nothing to sell'),
             ),
-            const SizedBox(height: AppSpacing.sm),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-/// One-line feedback comparing the negotiated price to cost and list.
 class _MarginHint extends StatelessWidget {
   const _MarginHint({required this.item, required this.unitPrice});
 
@@ -258,14 +246,14 @@ class _MarginHint extends StatelessWidget {
     final color = belowCost
         ? scheme.error
         : atCost
-        ? scheme.onSurfaceVariant
-        : scheme.tertiary;
+            ? scheme.onSurfaceVariant
+            : scheme.tertiary;
 
     final text = belowCost
         ? 'Below cost by ${formatMoney(-profit)}/unit'
         : atCost
-        ? 'Selling at cost — no profit'
-        : 'Earns ${formatMoney(profit)}/unit';
+            ? 'Selling at cost — no profit'
+            : 'Earns ${formatMoney(profit)}/unit';
 
     return Row(
       children: [
@@ -273,8 +261,8 @@ class _MarginHint extends StatelessWidget {
           belowCost
               ? Icons.warning_amber_rounded
               : atCost
-              ? Icons.remove_circle_outline
-              : Icons.trending_up,
+                  ? Icons.remove_circle_outline
+                  : Icons.trending_up,
           size: 16,
           color: color,
         ),
@@ -301,17 +289,14 @@ class _PriceChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return ActionChip(
-      label: Text(label),
+    return MetroButton(
       onPressed: onTap,
-      visualDensity: VisualDensity.compact,
-      side: BorderSide(color: scheme.outlineVariant),
+      style: const MetroButtonStyle(minimumSize: Size(64, 32)),
+      child: Text(label),
     );
   }
 }
 
-// Plain, input-friendly price text: 12.0 -> "12", 12.50 -> "12.5".
 String _priceText(double price) {
   final s = price.toStringAsFixed(2);
   if (s.endsWith('.00')) return s.substring(0, s.length - 3);

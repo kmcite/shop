@@ -1,4 +1,4 @@
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/material.dart';
 
 import '../../models/bulk_shipment_model.dart';
 import '../../ui/format.dart';
@@ -21,9 +21,8 @@ class BulkShipmentCard extends StatelessWidget {
     final scheme = theme.colorScheme;
 
     return Material(
-      color: scheme.surfaceContainerLow,
+      color: scheme.surface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: scheme.outlineVariant),
       ),
       clipBehavior: Clip.antiAlias,

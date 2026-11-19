@@ -1,6 +1,9 @@
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/material.dart';
 
+import '../../../models/bulk_shipment_model.dart';
 import '../../../ui/spacing.dart';
+import '../../bulk/bulk_step_access.dart';
+import '../../design/metro.dart';
 
 /// Shared page chrome for bulk flow screens.
 class BulkFlowScaffold extends StatelessWidget {
@@ -9,25 +12,33 @@ class BulkFlowScaffold extends StatelessWidget {
     required this.title,
     required this.children,
     this.bottom,
+    this.embedded = false,
   });
 
   final String title;
   final List<Widget> children;
   final Widget? bottom;
 
+  /// When true, only the scrollable body is built (for panorama / hub steps).
+  final bool embedded;
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.lg,
-          AppSpacing.lg,
-          AppSpacing.lg,
-          AppSpacing.xxl,
-        ),
-        children: children,
+    final body = ListView(
+      padding: EdgeInsets.fromLTRB(
+        embedded ? MetroSpacing.lg : AppSpacing.lg,
+        embedded ? MetroSpacing.xs : AppSpacing.lg,
+        embedded ? MetroSpacing.sm : AppSpacing.lg,
+        AppSpacing.xxl,
       ),
+      children: children,
+    );
+
+    if (embedded) return body;
+
+    return Scaffold(
+      appBar: AppBar(title: Text(title.toLowerCase())),
+      body: body,
       bottomNavigationBar: bottom == null
           ? null
           : SafeArea(
@@ -52,12 +63,15 @@ class BulkIntroText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final metro = MetroTheme.of(context);
     return Text(
       text,
+      textAlign: TextAlign.left,
       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-        color: Theme.of(context).colorScheme.onSurfaceVariant,
-        height: 1.35,
-      ),
+            color: metro.colors.mutedForeground,
+            height: 1.25,
+            fontWeight: FontWeight.w300,
+          ),
     );
   }
 }
@@ -79,7 +93,7 @@ class BulkSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final metro = MetroTheme.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -92,17 +106,18 @@ class BulkSection extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    title,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
+                    title.toLowerCase(),
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w300,
+                      color: metro.colors.mutedForeground,
                     ),
                   ),
                   if (subtitle != null) ...[
                     const SizedBox(height: AppSpacing.xs),
                     Text(
-                      subtitle!,
+                      subtitle!.toLowerCase(),
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
+                        color: metro.colors.mutedForeground,
                       ),
                     ),
                   ],
@@ -119,7 +134,7 @@ class BulkSection extends StatelessWidget {
   }
 }
 
-/// Bordered rounded group used across bulk flows.
+/// Flat Metro panel — solid chrome fill, zero radius, no decorative chrome.
 class BulkOutlineGroup extends StatelessWidget {
   const BulkOutlineGroup({
     super.key,
@@ -134,14 +149,10 @@ class BulkOutlineGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final metro = MetroTheme.of(context);
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: color ?? scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: scheme.outlineVariant, width: 1),
-      ),
+    return ColoredBox(
+      color: color ?? metro.colors.surface,
       child: Padding(
         padding: padding ?? AppSpacing.card,
         child: child,
@@ -166,7 +177,7 @@ class BulkListTileRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final metro = MetroTheme.of(context);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
@@ -184,16 +195,16 @@ class BulkListTileRow extends StatelessWidget {
                 Text(
                   title,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                        fontWeight: FontWeight.w600,
+                      ),
                 ),
                 if (subtitle != null) ...[
                   const SizedBox(height: 2),
                   Text(
                     subtitle!,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
+                          color: metro.colors.mutedForeground,
+                        ),
                   ),
                 ],
               ],
@@ -204,6 +215,16 @@ class BulkListTileRow extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Sharp index badge (replaces circular avatars in Metro lists).
+class BulkIndexBadge extends StatelessWidget {
+  const BulkIndexBadge(this.index, {super.key});
+
+  final int index;
+
+  @override
+  Widget build(BuildContext context) => MetroBadge.index(index);
 }
 
 class BulkErrorText extends StatelessWidget {
@@ -219,10 +240,43 @@ class BulkErrorText extends StatelessWidget {
       child: Text(
         message!,
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: Theme.of(context).colorScheme.error,
-        ),
+              color: Theme.of(context).colorScheme.error,
+            ),
       ),
     );
+  }
+}
+
+/// Banner and/or intro for a bulk timeline step from [BulkStepAccess].
+class BulkStepContextHeader extends StatelessWidget {
+  const BulkStepContextHeader({
+    super.key,
+    required this.status,
+    required this.stepIndex,
+  });
+
+  final BulkShipmentStatus status;
+  final int stepIndex;
+
+  @override
+  Widget build(BuildContext context) {
+    final banner = BulkStepAccess.stepBannerMessage(status, stepIndex);
+    if (banner != null) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: AppSpacing.md),
+        child: BulkReadOnlyBanner(message: banner),
+      );
+    }
+
+    final intro = BulkStepAccess.stepIntroMessage(status, stepIndex);
+    if (intro != null) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: AppSpacing.md),
+        child: BulkIntroText(intro),
+      );
+    }
+
+    return const SizedBox.shrink();
   }
 }
 
@@ -236,23 +290,23 @@ class BulkReadOnlyBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final metro = MetroTheme.of(context);
     return BulkOutlineGroup(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
         vertical: AppSpacing.md,
       ),
-      color: scheme.tertiaryContainer.withValues(alpha: 0.35),
+      color: metro.colors.accent.withValues(alpha: 0.12),
       child: Row(
         children: [
-          Icon(Icons.lock_outline, size: 20, color: scheme.tertiary),
+          Icon(Icons.lock_outline, size: 20, color: metro.colors.accent),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
-              message,
+              message.toLowerCase(),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+                    fontWeight: FontWeight.w600,
+                  ),
             ),
           ),
         ],
@@ -275,9 +329,10 @@ class BulkStickyPrimaryButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      child: FilledButton(
+      child: MetroButton.accent(
         onPressed: onPressed,
-        child: Text(label),
+        style: const MetroButtonStyle(minimumSize: Size(0, 44)),
+        child: Text(label.toLowerCase()),
       ),
     );
   }

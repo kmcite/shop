@@ -1,12 +1,9 @@
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter/material.dart';
+import 'package:shop/business/shop_cubit.dart';
 
 import '../../models/bulk_shipment_model.dart';
-import 'bulk_count_screen.dart';
-import 'bulk_price_screen.dart';
-import 'bulk_receive_screen.dart';
 import 'bulk_step_access.dart';
-import 'bulk_step_order_screen.dart';
-import 'bulk_step_stock_screen.dart';
 
 void openBulkTimelineStep(
   BuildContext context, {
@@ -14,18 +11,9 @@ void openBulkTimelineStep(
   required BulkShipmentStatus status,
   required int stepIndex,
 }) {
-  if (!BulkStepAccess.canNavigate(status, stepIndex)) return;
-  final readOnly = BulkStepAccess.isReadOnly(status, stepIndex);
-
-  final route = switch (stepIndex) {
-    0 => BulkStepOrderScreen.route(shipmentId),
-    1 => BulkReceiveScreen.route(shipmentId, readOnly: readOnly),
-    2 => BulkCountScreen.route(shipmentId, readOnly: readOnly),
-    3 => BulkPriceScreen.route(shipmentId, readOnly: readOnly),
-    4 => BulkStepStockScreen.route(shipmentId, readOnly: readOnly),
-    _ => null,
-  };
-  if (route != null) {
-    Navigator.of(context).push(route);
-  }
+  if (stepIndex < 0 || stepIndex >= BulkStepAccess.stepCount) return;
+  context.read<ShopCubit>().openBulkShipment(
+        shipmentId,
+        initialStep: stepIndex,
+      );
 }

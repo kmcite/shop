@@ -1,12 +1,13 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/material.dart';
 import 'package:shop/business/item_form_cubit.dart';
 
 import '../../models/shop_item_model.dart';
 import '../../ui/spacing.dart';
+import '../design/metro.dart';
 import 'item_form_sheet_fields.dart';
 
-/// Opens the edit sheet for a single existing item. Returns the edited draft,
+/// Opens the edit screen for a single existing item. Returns the edited draft,
 /// or null when cancelled.
 Future<ShopItem?> openItemFormSheet(
   BuildContext context, {
@@ -15,16 +16,13 @@ Future<ShopItem?> openItemFormSheet(
   context.read<ItemFormCubit>().begin(existing);
   if (!context.mounted) return null;
 
-  return showModalBottomSheet<ShopItem>(
-    context: context,
-    isScrollControlled: true,
-    showDragHandle: true,
-    builder: (context) => _ItemFormSheet(existing: existing),
+  return Navigator.of(context).push<ShopItem>(
+    metroRoute(context: context, builder: (_) => ItemFormScreen(existing: existing)),
   );
 }
 
-class _ItemFormSheet extends StatelessWidget {
-  const _ItemFormSheet({required this.existing});
+class ItemFormScreen extends StatelessWidget {
+  const ItemFormScreen({super.key, required this.existing});
 
   final ShopItem existing;
 
@@ -39,42 +37,42 @@ class _ItemFormSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bottom = MediaQuery.viewInsetsOf(context).bottom;
-    final theme = Theme.of(context);
-
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        AppSpacing.xl,
-        AppSpacing.sm,
-        AppSpacing.xl,
-        AppSpacing.lg + bottom,
+    return Scaffold(
+      appBar: AppBar(title: const Text('edit item')),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.xl,
+          AppSpacing.lg,
+          AppSpacing.xl,
+          AppSpacing.xxl,
+        ),
+        children: [
+          Text(
+            'Update the details or correct the stock count.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          const ItemFormSheetFields(isEdit: true),
+        ],
       ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('Edit item', style: theme.textTheme.titleLarge),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              'Update the details or correct the stock count.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            const ItemFormSheetFields(isEdit: true),
-            const SizedBox(height: AppSpacing.xl),
-            FilledButton(
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.xl,
+            AppSpacing.sm,
+            AppSpacing.xl,
+            AppSpacing.lg,
+          ),
+          child: SizedBox(
+            width: double.infinity,
+            child: MetroButton.accent(
               onPressed: () => _submit(context),
+              style: const MetroButtonStyle(minimumSize: Size(0, 44)),
               child: const Text('Save changes'),
             ),
-            const SizedBox(height: AppSpacing.sm),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-          ],
+          ),
         ),
       ),
     );

@@ -2,7 +2,7 @@
 library;
 
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/material.dart';
 import 'package:shop/business/sell_cart_cubit.dart';
 import 'package:shop/business/shop_cubit.dart';
 import 'package:shop/business/states/shop_state.dart';
@@ -10,16 +10,25 @@ import 'package:shop/business/states/shop_state.dart';
 import '../../models/shop_item_model.dart';
 import '../../ui/format.dart';
 import '../../ui/spacing.dart';
+import '../design/metro.dart';
 import '../widgets/empty_views.dart';
+import '../widgets/search_field.dart';
 import '../widgets/sell_cart_bar.dart';
 import '../widgets/sell_item_tile.dart';
 
 enum _SellScope { ready, all }
 
 class SellScreen extends StatefulWidget {
-  const SellScreen({super.key, required this.onGoToStock});
+  const SellScreen({
+    super.key,
+    required this.onGoToStock,
+    this.embedded = false,
+  });
 
   final VoidCallback onGoToStock;
+
+  /// When true, omit [Scaffold] so the screen can live inside a panorama column.
+  final bool embedded;
 
   @override
   State<SellScreen> createState() => _SellScreenState();
@@ -44,8 +53,7 @@ class _SellScreenState extends State<SellScreen> {
       (sum, i) => sum + i.price * i.quantity,
     );
 
-    return Scaffold(
-      body: RefreshIndicator(
+    final body = MetroRefresh(
       onRefresh: () => context.read<ShopCubit>().refreshInventoryFlow(),
       child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(
@@ -71,19 +79,10 @@ class _SellScreenState extends State<SellScreen> {
                     ),
                     const SizedBox(height: AppSpacing.lg),
                   ],
-                  SearchBar(
-                    hintText: 'Find something to sell\u2026',
-                    leading: Icon(Icons.search, color: scheme.onSurfaceVariant),
-                    trailing: _query.isEmpty
-                        ? null
-                        : [
-                            IconButton(
-                              tooltip: 'Clear',
-                              icon: const Icon(Icons.close),
-                              onPressed: () => setState(() => _query = ''),
-                            ),
-                          ],
-                    onChanged: (value) => setState(() => _query = value.trim()),
+                  SearchField(
+                    query: _query,
+                    hintText: 'find something to sell\u2026',
+                    onChanged: (value) => setState(() => _query = value),
                   ),
                   if (all.isNotEmpty) ...[
                     const SizedBox(height: AppSpacing.md),
@@ -145,7 +144,8 @@ class _SellScreenState extends State<SellScreen> {
               ),
               sliver: SliverList.separated(
                 itemCount: items.length,
-                separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
+                separatorBuilder: (_, _) =>
+                    const SizedBox(height: AppSpacing.sm),
                 itemBuilder: (context, index) {
                   final item = items[index];
                   return SellItemTile(
@@ -166,7 +166,20 @@ class _SellScreenState extends State<SellScreen> {
             ),
         ],
       ),
-    ),
+    );
+
+    if (widget.embedded) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: body),
+          const SellCartBar(),
+        ],
+      );
+    }
+
+    return Scaffold(
+      body: body,
       bottomNavigationBar: const SellCartBar(),
     );
   }
@@ -214,85 +227,71 @@ class _SellCounterHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    const onAccent = Colors.white;
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              scheme.primaryContainer,
-              scheme.secondaryContainer.withValues(alpha: 0.85),
-            ],
-          ),
-        ),
-        child: Padding(
-          padding: AppSpacing.card,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.point_of_sale_rounded,
-                    color: scheme.onPrimaryContainer,
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Text(
-                    'On the floor',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      color: scheme.onPrimaryContainer,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '$readySkus',
-                    style: theme.textTheme.headlineLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: scheme.onPrimaryContainer,
-                      height: 1,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      'SKU${readySkus == 1 ? '' : 's'} · $floorUnits units',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: scheme.onPrimaryContainer.withValues(alpha: 0.9),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  formatMoney(floorRetail),
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: scheme.onSecondaryContainer,
+    return ColoredBox(
+      color: MetroColors.cyan,
+      child: Padding(
+        padding: AppSpacing.card,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.point_of_sale_outlined, color: onAccent),
+                const SizedBox(width: AppSpacing.sm),
+                Text(
+                  'on the floor',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: onAccent,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-              ),
-              Text(
-                'list value on hand',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: scheme.onSecondaryContainer.withValues(alpha: 0.9),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '$readySkus',
+                  style: theme.textTheme.displaySmall?.copyWith(
+                    fontWeight: FontWeight.w200,
+                    color: onAccent,
+                    height: 1,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    'sku${readySkus == 1 ? '' : 's'} · $floorUnits units',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: onAccent.withValues(alpha: 0.9),
+                      fontWeight: FontWeight.w300,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                formatMoney(floorRetail),
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: onAccent,
                 ),
               ),
-            ],
-          ),
+            ),
+            Text(
+              'list value on hand',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: onAccent.withValues(alpha: 0.85),
+              ),
+            ),
+          ],
         ),
       ),
     );

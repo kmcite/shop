@@ -1,28 +1,36 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/material.dart';
 
 import '../ui/format.dart';
 
 import '../models/bulk_purchase_line_model.dart';
 import '../models/bulk_shipment_line_model.dart';
 import '../models/bulk_shipment_model.dart';
+import '../models/customer_model.dart';
 import '../models/sale_line_request.dart';
 import '../models/shop_item_model.dart';
-import '../repositories/shop_navigator.dart';
+import '../features/app/app_router.dart';
 import '../repositories/shop_repository.dart';
 import 'bulk_order_draft_cubit.dart';
 import 'sell_cart_cubit.dart';
 import 'states/shop_state.dart';
 
+const _darknessKey = 'dark';
+
 class ShopCubit extends Cubit<ShopState> {
   ShopCubit({
     required this._repository,
-    required this._navigator,
+    required this._router,
   }) : super(const ShopState());
 
   final ShopRepository _repository;
-  final ShopNavigator _navigator;
+  final AppRouter _router;
+
+  StreamSubscription<void>? _dataWatchSub;
+  Timer? _reloadDebounce;
 
   Future<void> initialize() async {
     emit(state.copyWith(isLoading: true, error: null));
@@ -30,31 +38,184 @@ class ShopCubit extends Cubit<ShopState> {
       await _repository.connect();
       emit(state.copyWith(bootstraped: true));
       await reloadData();
+      await _startDatabaseWatch();
+      final mode = await getThemeMode();
+      emit(state.copyWith(themeMode: mode));
     } catch (error) {
       emit(state.copyWith(isLoading: false, error: error, bootstraped: false));
     }
+  }
+
+  Future<void> _startDatabaseWatch() async {
+    await _dataWatchSub?.cancel();
+    _dataWatchSub = _repository.watchShopData().listen((_) {
+      _scheduleReloadFromDatabase();
+    });
+  }
+
+  void _scheduleReloadFromDatabase() {
+    _reloadDebounce?.cancel();
+    _reloadDebounce = Timer(const Duration(milliseconds: 120), () {
+      reloadData();
+    });
+  }
+
+  @override
+  Future<void> close() {
+    _dataWatchSub?.cancel();
+    _reloadDebounce?.cancel();
+    return super.close();
   }
 
   Future<void> reloadData() async {
     final items = await _repository.getItems();
     final sales = await _repository.getSales();
     final bulks = await _repository.getBulkShipments();
+    final customers = await _repository.getCustomers();
+    final customerLedger = await _repository.getAllCustomerLedger();
     emit(
       state.copyWith(
         items: items,
         bulkShipments: bulks,
         sales: sales,
+        customers: customers,
+        customerLedger: customerLedger,
         isLoading: false,
         error: null,
       ),
     );
   }
 
-  void setThemeMode(ThemeMode mode) =>
-      emit(state.copyWith(themeMode: mode));
+  Future<ShopCustomer?> upsertCustomer({
+    String id = '',
+    required String name,
+    String note = '',
+    DateTime? createdAt,
+  }) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) {
+      _router.showToast('Customer name is required', success: false);
+      return null;
+    }
+    ShopCustomer? existing;
+    if (id.isNotEmpty) {
+      for (final c in state.customers) {
+        if (c.id == id) {
+          existing = c;
+          break;
+        }
+      }
+    }
+    final customer = ShopCustomer(
+      id: id,
+      name: trimmed,
+      note: note.trim(),
+      createdAt: existing?.createdAt ?? createdAt ?? DateTime.now(),
+    );
+    final savedId = await _repository.upsertCustomer(customer);
+    await reloadData();
+    return ShopCustomer(
+      id: savedId,
+      name: customer.name,
+      note: customer.note,
+      createdAt: customer.createdAt,
+    );
+  }
 
-  void setSearchQuery(String query) =>
-      emit(state.copyWith(searchQuery: query));
+  Future<void> deleteCustomer(String id) async {
+    await _repository.deleteCustomer(id);
+    await reloadData();
+  }
+
+  Future<bool> sellToCustomer({
+    required String customerId,
+    required List<SaleLineRequest> lines,
+    double amountPaid = 0,
+    String note = '',
+  }) async {
+    try {
+      await _repository.sellToCustomer(
+        customerId: customerId,
+        lines: lines,
+        amountPaid: amountPaid,
+        note: note,
+      );
+      await reloadData();
+      if (_router.isMounted) {
+        HapticFeedback.mediumImpact();
+        final total = lines.fold<double>(
+          0,
+          (sum, l) => sum + l.unitPrice * l.count,
+        );
+        final owed = total - amountPaid;
+        _router.showToast(
+          owed > 0.005
+              ? 'Credit sale · owed ${formatMoney(owed)}'
+              : 'Credit sale paid in full · ${formatMoney(total)}',
+          success: true,
+        );
+      }
+      return true;
+    } on StateError catch (e) {
+      if (_router.isMounted) {
+        _router.showToast(e.message, success: false);
+      }
+      return false;
+    } catch (e) {
+      if (_router.isMounted) {
+        _router.showToast('Credit sale failed: $e', success: false);
+      }
+      return false;
+    }
+  }
+
+  Future<bool> recordCustomerPayment({
+    required String customerId,
+    required double amount,
+    String note = '',
+  }) async {
+    try {
+      await _repository.recordCustomerPayment(
+        customerId: customerId,
+        amount: amount,
+        note: note,
+      );
+      await reloadData();
+      if (_router.isMounted) {
+        HapticFeedback.mediumImpact();
+        _router.showToast(
+          'Payment recorded · ${formatMoney(amount)}',
+          success: true,
+        );
+      }
+      return true;
+    } on StateError catch (e) {
+      if (_router.isMounted) {
+        _router.showToast(e.message, success: false);
+      }
+      return false;
+    } catch (e) {
+      if (_router.isMounted) {
+        _router.showToast('Payment failed: $e', success: false);
+      }
+      return false;
+    }
+  }
+
+  void setThemeMode(ThemeMode mode) {
+    _repository.setPreference(
+      _darknessKey,
+      mode == ThemeMode.dark ? 'true' : 'false',
+    );
+    emit(state.copyWith(themeMode: mode));
+  }
+
+  Future<ThemeMode> getThemeMode() async {
+    final mode = await _repository.getPreference(_darknessKey);
+    return mode == 'true' ? ThemeMode.dark : ThemeMode.light;
+  }
+
+  void setSearchQuery(String query) => emit(state.copyWith(searchQuery: query));
 
   Future<void> updateItem(ShopItem item) async {
     await _repository.updateItem(item);
@@ -380,62 +541,62 @@ class ShopCubit extends Cubit<ShopState> {
     draft.setLines(lines);
   }
 
-  // — UI flows (navigator + cubits) —
+  // — UI flows (router + cubits) —
 
   Future<void> refreshInventoryFlow() async {
     try {
       await reloadData();
     } catch (e) {
-      if (_navigator.isMounted) {
-        _navigator.showToast('Could not refresh: $e', success: false);
+      if (_router.isMounted) {
+        _router.showToast('Could not refresh: $e', success: false);
       }
     }
   }
 
   Future<void> deleteItemFlow(ShopItem item) async {
-    final confirmed = await _navigator.confirmDeleteItem(item);
-    if (!confirmed || !_navigator.isMounted) return;
+    final confirmed = await _router.confirmDeleteItem(item);
+    if (!confirmed || !_router.isMounted) return;
     try {
       await deleteItem(item.id);
     } catch (e) {
-      if (_navigator.isMounted) {
-        _navigator.showToast('Could not delete: $e', success: false);
+      if (_router.isMounted) {
+        _router.showToast('Could not delete: $e', success: false);
       }
     }
   }
 
   Future<void> editItemFlow(ShopItem item) async {
-    final updated = await _navigator.showItemForm(existing: item);
-    if (updated == null || !_navigator.isMounted) return;
+    final updated = await _router.openItemForm(existing: item);
+    if (updated == null || !_router.isMounted) return;
     try {
       await updateItem(updated);
-      if (!_navigator.isMounted) return;
-      _navigator.showToast('Updated ${updated.name}', success: true);
+      if (!_router.isMounted) return;
+      _router.showToast('Updated ${updated.name}', success: true);
     } catch (e) {
-      if (_navigator.isMounted) {
-        _navigator.showToast('Could not save: $e', success: false);
+      if (_router.isMounted) {
+        _router.showToast('Could not save: $e', success: false);
       }
     }
   }
 
   Future<void> restockItemFlow(ShopItem item) async {
-    final result = await _navigator.showRestockSheet(item);
-    if (result == null || !_navigator.isMounted) return;
+    final result = await _router.openRestock(item);
+    if (result == null || !_router.isMounted) return;
     try {
       await restockItem(
         item,
         count: result.count,
         unitCost: result.unitCost,
       );
-      if (!_navigator.isMounted) return;
-      _navigator.showToast(
+      if (!_router.isMounted) return;
+      _router.showToast(
         'Restocked ${result.count} × ${item.name} at '
         '${formatMoney(result.unitCost)} each',
         success: true,
       );
     } catch (e) {
-      if (_navigator.isMounted) {
-        _navigator.showToast('Could not restock: $e', success: false);
+      if (_router.isMounted) {
+        _router.showToast('Could not restock: $e', success: false);
       }
     }
   }
@@ -443,21 +604,21 @@ class ShopCubit extends Cubit<ShopState> {
   Future<void> clearAllSalesFlow() async {
     final count = state.sales.length;
     if (count == 0) {
-      _navigator.showToast('No sales to clear', success: false);
+      _router.showToast('No sales to clear', success: false);
       return;
     }
-    final confirmed = await _navigator.confirmClearAllSales(count);
-    if (!confirmed || !_navigator.isMounted) return;
+    final confirmed = await _router.confirmClearAllSales(count);
+    if (!confirmed || !_router.isMounted) return;
     try {
       await clearAllSales();
-      if (!_navigator.isMounted) return;
-      _navigator.showToast(
+      if (!_router.isMounted) return;
+      _router.showToast(
         count == 1 ? 'Cleared 1 sale' : 'Cleared $count sales',
         success: true,
       );
     } catch (e) {
-      if (_navigator.isMounted) {
-        _navigator.showToast('Could not clear sales: $e', success: false);
+      if (_router.isMounted) {
+        _router.showToast('Could not clear sales: $e', success: false);
       }
     }
   }
@@ -465,21 +626,21 @@ class ShopCubit extends Cubit<ShopState> {
   Future<void> clearAllInventoryFlow() async {
     final count = state.items.length;
     if (count == 0) {
-      _navigator.showToast('No inventory to clear', success: false);
+      _router.showToast('No inventory to clear', success: false);
       return;
     }
-    final confirmed = await _navigator.confirmClearAllInventory(count);
-    if (!confirmed || !_navigator.isMounted) return;
+    final confirmed = await _router.confirmClearAllInventory(count);
+    if (!confirmed || !_router.isMounted) return;
     try {
       await clearAllItems();
-      if (!_navigator.isMounted) return;
-      _navigator.showToast(
+      if (!_router.isMounted) return;
+      _router.showToast(
         count == 1 ? 'Cleared 1 item' : 'Cleared $count items',
         success: true,
       );
     } catch (e) {
-      if (_navigator.isMounted) {
-        _navigator.showToast('Could not clear inventory: $e', success: false);
+      if (_router.isMounted) {
+        _router.showToast('Could not clear inventory: $e', success: false);
       }
     }
   }
@@ -487,40 +648,40 @@ class ShopCubit extends Cubit<ShopState> {
   Future<void> clearAllBulksFlow() async {
     final count = state.bulkShipments.length;
     if (count == 0) {
-      _navigator.showToast('No bulks to clear', success: false);
+      _router.showToast('No bulks to clear', success: false);
       return;
     }
-    final confirmed = await _navigator.confirmClearAllBulks(count);
-    if (!confirmed || !_navigator.isMounted) return;
+    final confirmed = await _router.confirmClearAllBulks(count);
+    if (!confirmed || !_router.isMounted) return;
     try {
       await clearAllBulks();
-      if (!_navigator.isMounted) return;
-      _navigator.showToast(
+      if (!_router.isMounted) return;
+      _router.showToast(
         count == 1 ? 'Cleared 1 bulk' : 'Cleared $count bulks',
         success: true,
       );
     } catch (e) {
-      if (_navigator.isMounted) {
-        _navigator.showToast('Could not clear bulks: $e', success: false);
+      if (_router.isMounted) {
+        _router.showToast('Could not clear bulks: $e', success: false);
       }
     }
   }
 
-  Future<void> openBulkHistory() => _navigator.openBulkHistory();
+  Future<void> openBulkHistory() => _router.openBulkHistory();
 
   Future<void> startBulkFlow(BulkOrderDraftCubit draft) async {
     draft.reset();
-    await _navigator.openNewBulkOrder();
+    await _router.openNewBulkOrder();
   }
 
-  Future<void> openBulkShipment(String shipmentId) =>
-      _navigator.openBulkShipment(shipmentId);
+  Future<void> openBulkShipment(String shipmentId, {int? initialStep}) =>
+      _router.openBulkShipment(shipmentId, initialStep: initialStep);
 
   Future<void> completeSellCartFlow(SellCartCubit cart) async {
     if (cart.state.isEmpty) return;
 
-    final confirm = await _navigator.showSellCheckout();
-    if (confirm != true || !_navigator.isMounted || cart.state.lines.isEmpty) {
+    final confirm = await _router.openSellCheckout();
+    if (confirm != true || !_router.isMounted || cart.state.lines.isEmpty) {
       return;
     }
 
@@ -533,27 +694,27 @@ class ShopCubit extends Cubit<ShopState> {
 
     try {
       await completeSellCart(cart);
-      if (_navigator.isMounted) {
+      if (_router.isMounted) {
         HapticFeedback.mediumImpact();
-        _navigator.showToast(
+        _router.showToast(
           'Sold $units units · ${formatMoney(grandTotal)}',
           success: true,
         );
       }
     } on StateError catch (e) {
-      if (_navigator.isMounted) {
-        _navigator.showToast(e.message, success: false);
+      if (_router.isMounted) {
+        _router.showToast(e.message, success: false);
       }
     } catch (e) {
-      if (_navigator.isMounted) {
-        _navigator.showToast('Sale failed: $e', success: false);
+      if (_router.isMounted) {
+        _router.showToast('Sale failed: $e', success: false);
       }
     }
   }
 
   Future<void> addToSellCartFlow(ShopItem item, SellCartCubit cart) async {
-    final result = await _navigator.showSellSheet(item);
-    if (result == null || !_navigator.isMounted) return;
+    final result = await _router.openSell(item);
+    if (result == null || !_router.isMounted) return;
 
     cart.addToCart(
       itemId: item.id,
@@ -561,10 +722,10 @@ class ShopCubit extends Cubit<ShopState> {
       unitPrice: result.unitPrice,
     );
 
-    if (!_navigator.isMounted) return;
+    if (!_router.isMounted) return;
     HapticFeedback.selectionClick();
     final types = cart.state.itemTypeCount;
-    _navigator.showToast(
+    _router.showToast(
       'Added to sale · $types type${types == 1 ? '' : 's'} in cart',
       success: true,
     );
@@ -575,8 +736,8 @@ ShopItem _afterRestock(ShopItem existing, BulkPurchaseLine line) {
   final newQty = existing.quantity + line.quantity;
   final newCost = existing.costPrice > 0
       ? (existing.quantity * existing.costPrice +
-              line.quantity * line.costPrice) /
-          newQty
+                line.quantity * line.costPrice) /
+            newQty
       : line.costPrice;
   return existing.copyWith(
     quantity: newQty,

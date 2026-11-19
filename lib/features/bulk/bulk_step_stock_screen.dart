@@ -1,26 +1,33 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/material.dart';
 import 'package:shop/business/shop_cubit.dart';
 
 import '../../models/bulk_shipment_model.dart';
 import '../../ui/format.dart';
 import '../../ui/spacing.dart';
+import '../design/metro.dart';
 import '../widgets/bulk/bulk_ui.dart';
-import 'bulk_step_access.dart';
 
 /// Stock-in step: summary (read-only). Finalize only from hub when priced.
 class BulkStepStockScreen extends StatelessWidget {
   const BulkStepStockScreen({
     required this.shipmentId,
     this.readOnly = true,
+    this.embedded = false,
     super.key,
   });
 
   final String shipmentId;
   final bool readOnly;
+  final bool embedded;
 
-  static Route<void> route(String shipmentId, {bool readOnly = true}) {
-    return MaterialPageRoute<void>(
+  static Route<void> route(
+    BuildContext context,
+    String shipmentId, {
+    bool readOnly = true,
+  }) {
+    return metroRoute(
+      context: context,
       builder: (_) => BulkStepStockScreen(
         shipmentId: shipmentId,
         readOnly: readOnly,
@@ -46,25 +53,12 @@ class BulkStepStockScreen extends StatelessWidget {
     }
 
     final completed = bulk.status == BulkShipmentStatus.completed;
-    final awaitingStockIn = bulk.status == BulkShipmentStatus.priced;
 
     return BulkFlowScaffold(
       title: 'Stock in',
+      embedded: embedded,
       children: [
-        if (completed)
-          const BulkReadOnlyBanner(
-            message: 'This bulk was added to inventory.',
-          )
-        else if (awaitingStockIn)
-          const BulkIntroText(
-            'Listing prices are set — add this bulk to inventory from the hub.',
-          )
-        else if (readOnly &&
-            BulkStepAccess.isReadOnly(bulk.status, 4)) ...[
-          const BulkReadOnlyBanner(),
-          const SizedBox(height: AppSpacing.md),
-        ],
-        if (completed || awaitingStockIn) const SizedBox(height: AppSpacing.md),
+        BulkStepContextHeader(status: bulk.status, stepIndex: 4),
         BulkOutlineGroup(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,

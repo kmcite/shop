@@ -1,16 +1,20 @@
-/// App shell: three-tab view — Buy bulk, Sell, and Sales — switched with
-/// a bottom navigation bar. The buy-bulk FAB only shows on the stock screen.
+/// App shell: static bottom navigation across main shop screens.
 library;
 
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/material.dart';
 import 'package:shop/business/bulk_order_draft_cubit.dart';
 import 'package:shop/business/shop_cubit.dart';
-import '../../ui/spacing.dart';
+
+import '../customers/customer_editor_sheet.dart';
+import '../customers/customers_screen.dart';
+import '../design/metro.dart';
 import '../sales/sales_screen.dart';
 import '../sell/sell_screen.dart';
 import '../settings/settings_screen.dart';
 import '../stock/stock_screen.dart';
+
+enum ShopHomeTab { buyBulk, sell, sales, customers, settings }
 
 class ShopHomeScreen extends StatefulWidget {
   const ShopHomeScreen({super.key});
@@ -20,83 +24,110 @@ class ShopHomeScreen extends StatefulWidget {
 }
 
 class _ShopHomeScreenState extends State<ShopHomeScreen> {
-  final _controller = PageController();
-  int _index = 0;
+  ShopHomeTab _tab = ShopHomeTab.buyBulk;
 
-  static const _titles = ['Buy bulk', 'Sell', 'Sales'];
+  static const _titles = {
+    ShopHomeTab.buyBulk: 'buy bulk',
+    ShopHomeTab.sell: 'sell',
+    ShopHomeTab.sales: 'sales',
+    ShopHomeTab.customers: 'customers',
+    ShopHomeTab.settings: 'settings',
+  };
 
-  void _goToScreen(int index) {
-    _controller.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeOutCubic,
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
+  void _goTo(ShopHomeTab tab) {
+    if (_tab == tab) return;
+    setState(() => _tab = tab);
   }
 
   @override
   Widget build(BuildContext context) {
+    final metro = MetroTheme.of(context);
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          _titles[_index],
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Settings',
-            onPressed: () {
-              Navigator.of(context).push(createSettingsRoute());
-            },
-            icon: const Icon(Icons.settings_outlined),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-        ],
-      ),
-      body: PageView(
-        controller: _controller,
-        onPageChanged: (index) => setState(() => _index = index),
-        children: [
-          const StockScreen(),
-          SellScreen(onGoToStock: () => _goToScreen(0)),
-          const SalesScreen(),
-        ],
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: _goToScreen,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.inventory_2_outlined),
-            selectedIcon: Icon(Icons.inventory_2),
-            label: 'Buy bulk',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.point_of_sale_outlined),
-            selectedIcon: Icon(Icons.point_of_sale),
-            label: 'Sell',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.receipt_long_outlined),
-            selectedIcon: Icon(Icons.receipt_long),
-            label: 'Sales',
-          ),
-        ],
-      ),
-      floatingActionButton: _index == 0
-          ? FloatingActionButton.extended(
-              onPressed: () => context.read<ShopCubit>().startBulkFlow(
-                    context.read<BulkOrderDraftCubit>(),
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                MetroSpacing.lg,
+                MetroSpacing.sm,
+                MetroSpacing.lg,
+                MetroSpacing.xs,
+              ),
+              child: Text(
+                _titles[_tab]!,
+                style: metro.typography.header.copyWith(
+                  fontWeight: FontWeight.w200,
+                ),
+              ),
+            ),
+            Expanded(
+              child: IndexedStack(
+                index: _tab.index,
+                children: [
+                  const StockScreen(),
+                  SellScreen(
+                    embedded: true,
+                    onGoToStock: () => _goTo(ShopHomeTab.buyBulk),
                   ),
-              icon: const Icon(Icons.add_shopping_cart),
-              label: const Text('Buy bulk'),
-            )
-          : null,
+                  const SalesScreen(),
+                  const CustomersScreen(),
+                  const SettingsScreen(embedded: true),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      floatingActionButton: switch (_tab) {
+        ShopHomeTab.buyBulk => FloatingActionButton(
+            onPressed: () {
+              context.read<ShopCubit>().startBulkFlow(
+                    context.read<BulkOrderDraftCubit>(),
+                  );
+            },
+            tooltip: 'New bulk',
+            child: const Icon(MetroIcons.addBulk),
+          ),
+        ShopHomeTab.customers => FloatingActionButton(
+            onPressed: () => openCustomerEditor(context),
+            tooltip: 'Add customer',
+            child: const Icon(MetroIcons.addCustomer),
+          ),
+        _ => null,
+      },
+      bottomNavigationBar: MetroStaticBottomBar(
+        selectedIndex: _tab.index,
+        items: [
+          MetroBottomItem(
+            icon: MetroIcons.stock,
+            label: 'buy bulk',
+            onTap: () => _goTo(ShopHomeTab.buyBulk),
+          ),
+          MetroBottomItem(
+            icon: MetroIcons.sell,
+            label: 'sell',
+            onTap: () => _goTo(ShopHomeTab.sell),
+          ),
+          MetroBottomItem(
+            icon: MetroIcons.sales,
+            label: 'sales',
+            onTap: () => _goTo(ShopHomeTab.sales),
+          ),
+          MetroBottomItem(
+            icon: MetroIcons.customers,
+            label: 'customers',
+            onTap: () => _goTo(ShopHomeTab.customers),
+          ),
+          MetroBottomItem(
+            icon: MetroIcons.settings,
+            label: 'settings',
+            onTap: () => _goTo(ShopHomeTab.settings),
+          ),
+        ],
+      ),
     );
   }
 }

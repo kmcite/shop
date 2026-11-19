@@ -1,46 +1,122 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/material.dart';
+import 'package:shop/business/bulk_order_draft_cubit.dart';
 import 'package:shop/business/shop_cubit.dart';
+import 'package:shop/business/states/shop_state.dart';
 
 import '../../models/bulk_shipment_model.dart';
-import '../../ui/format.dart';
 import '../../ui/spacing.dart';
+import '../design/metro.dart';
 import '../widgets/bulk/bulk_ui.dart';
 import '../widgets/bulk_progress_stepper.dart';
-import 'bulk_step_navigation.dart';
+import 'bulk_count_screen.dart';
+import 'bulk_price_screen.dart';
+import 'bulk_receive_screen.dart';
+import 'bulk_step_access.dart';
+import 'bulk_step_order_screen.dart';
+import 'bulk_step_stock_screen.dart';
 
-class BulkShipmentHubScreen extends StatelessWidget {
-  const BulkShipmentHubScreen({required this.shipmentId, super.key});
+class BulkShipmentHubScreen extends StatefulWidget {
+  const BulkShipmentHubScreen({
+    required this.shipmentId,
+    this.initialStep,
+    super.key,
+  });
 
   final String shipmentId;
+  final int? initialStep;
 
-  static Route<void> route(String shipmentId) {
-    return MaterialPageRoute<void>(
-      builder: (_) => BulkShipmentHubScreen(shipmentId: shipmentId),
+  static Route<void> route(
+    BuildContext context,
+    String shipmentId, {
+    int? initialStep,
+  }) {
+    return metroRoute(
+      context: context,
+      builder: (_) => BulkShipmentHubScreen(
+        shipmentId: shipmentId,
+        initialStep: initialStep,
+      ),
     );
   }
 
-  BulkShipment? _bulk(BuildContext context) {
-    for (final b in context.watch<ShopCubit>().state.bulkShipments) {
-      if (b.id == shipmentId) return b;
+  @override
+  State<BulkShipmentHubScreen> createState() => _BulkShipmentHubScreenState();
+}
+
+class _BulkShipmentHubScreenState extends State<BulkShipmentHubScreen> {
+  static const _stepTitles = [
+    'order',
+    'receive',
+    'count',
+    'price',
+    'stock',
+  ];
+
+  late final MetroPanoramaController _panorama;
+  late int _page;
+  bool _didSyncInitialPage = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _page = widget.initialStep?.clamp(0, 4) ?? 0;
+    _panorama = MetroPanoramaController();
+    _panorama.addListener(_onPanorama);
+  }
+
+  @override
+  void dispose() {
+    _panorama.removeListener(_onPanorama);
+    _panorama.dispose();
+    super.dispose();
+  }
+
+  void _onPanorama() {
+    final next = _panorama.index;
+    if (next != _page) setState(() => _page = next);
+  }
+
+  void _syncInitialPage(BulkShipment bulk) {
+    if (_didSyncInitialPage) return;
+    _didSyncInitialPage = true;
+    final target = (widget.initialStep ?? bulk.editableStepIndex).clamp(0, 4);
+    if (target != _page) {
+      _page = target;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _panorama.jumpToSection(target);
+      });
+    }
+  }
+
+  BulkShipment? _bulk(ShopState state) {
+    for (final b in state.bulkShipments) {
+      if (b.id == widget.shipmentId) return b;
     }
     return null;
   }
 
-  void _openStep(BuildContext context, BulkShipment bulk) {
-    if (!bulk.status.isActive) return;
-    openBulkTimelineStep(
-      context,
-      shipmentId: bulk.id,
-      status: bulk.status,
-      stepIndex: bulk.editableStepIndex.clamp(0, 4),
-    );
+  void _goToPage(int index, {bool animate = true}) {
+    final clamped = index.clamp(0, 4);
+    setState(() => _page = clamped);
+    if (animate) {
+      _panorama.animateToSection(clamped);
+    } else {
+      _panorama.jumpToSection(clamped);
+    }
+  }
+
+  Future<void> _advanceAfterStep() async {
+    final updated = _bulk(context.read<ShopCubit>().state);
+    if (updated == null) return;
+    final next = updated.editableStepIndex.clamp(0, 4);
+    _goToPage(next);
   }
 
   Future<void> _finalize(BuildContext context) async {
-    await context.read<ShopCubit>().finalizeBulkShipment(shipmentId);
+    await context.read<ShopCubit>().finalizeBulkShipment(widget.shipmentId);
     if (!context.mounted) return;
-    final updated = _bulk(context);
+    final updated = _bulk(context.read<ShopCubit>().state);
     if (updated?.status != BulkShipmentStatus.completed) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -57,9 +133,82 @@ class BulkShipmentHubScreen extends StatelessWidget {
     );
   }
 
+  Widget? _flowBottomBar(BulkShipment bulk) {
+    if (_page == 4 && bulk.status == BulkShipmentStatus.priced) {
+      return BulkStickyPrimaryButton(
+        label: 'add to inventory',
+        onPressed: () => _finalize(context),
+      );
+    }
+    if (!BulkStepAccess.isEditable(bulk.status, _page)) {
+      return null;
+    }
+
+    return switch (_page) {
+      1 => BulkStickyPrimaryButton(
+          label: 'paid — bulk is at home',
+          onPressed: () async {
+            FocusScope.of(context).unfocus();
+            await context.read<ShopCubit>().saveBulkReceived(
+                  widget.shipmentId,
+                  context.read<BulkOrderDraftCubit>(),
+                );
+            if (!mounted) return;
+            if (context.read<BulkOrderDraftCubit>().state.error != null) {
+              return;
+            }
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Marked received — open the box when ready'),
+              ),
+            );
+            await _advanceAfterStep();
+          },
+        ),
+      2 => BulkStickyPrimaryButton(
+          label: 'save counts',
+          onPressed: () async {
+            FocusScope.of(context).unfocus();
+            await context.read<ShopCubit>().saveBulkCounted(
+                  widget.shipmentId,
+                  context.read<BulkOrderDraftCubit>(),
+                );
+            if (!mounted) return;
+            if (context.read<BulkOrderDraftCubit>().state.error != null) {
+              return;
+            }
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Counts saved — set listing prices next'),
+              ),
+            );
+            await _advanceAfterStep();
+          },
+        ),
+      3 => BulkStickyPrimaryButton(
+          label: 'save prices',
+          onPressed: () async {
+            await context.read<ShopCubit>().saveBulkPriced(
+                  widget.shipmentId,
+                  context.read<BulkOrderDraftCubit>(),
+                );
+            if (!mounted) return;
+            if (context.read<BulkOrderDraftCubit>().state.error != null) {
+              return;
+            }
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Listing prices saved')),
+            );
+            await _advanceAfterStep();
+          },
+        ),
+      _ => null,
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
-    final bulk = _bulk(context);
+    final bulk = _bulk(context.watch<ShopCubit>().state);
     if (bulk == null) {
       return Scaffold(
         appBar: AppBar(),
@@ -67,161 +216,131 @@ class BulkShipmentHubScreen extends StatelessWidget {
       );
     }
 
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    _syncInitialPage(bulk);
 
-    return BulkFlowScaffold(
-      title: bulk.sellerLabel,
-      bottom: bulk.status.isActive
-          ? BulkStickyPrimaryButton(
-              label: bulk.status == BulkShipmentStatus.priced
-                  ? 'Add to inventory'
-                  : bulk.nextActionLabel,
-              onPressed: bulk.status == BulkShipmentStatus.priced
-                  ? () => _finalize(context)
-                  : () => _openStep(context, bulk),
-            )
-          : null,
-      children: [
-        BulkOutlineGroup(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              BulkProgressStepper(
-                current: bulk.status,
-                shipmentId: bulk.id,
+    final metro = MetroTheme.of(context);
+    final bottom = _flowBottomBar(bulk);
+
+    return Scaffold(
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                MetroSpacing.lg,
+                MetroSpacing.xs,
+                MetroSpacing.xs,
+                0,
               ),
-              const SizedBox(height: AppSpacing.lg),
-              Text(
-                bulk.status.label,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                bulk.qualityNotes,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: AppSpacing.xl),
-        BulkSection(
-          title: 'Costs',
-          child: _MetricGrid(bulk: bulk),
-        ),
-        if (bulk.status.isActive && bulk.status != BulkShipmentStatus.priced)
-          Padding(
-            padding: const EdgeInsets.only(top: AppSpacing.md),
-            child: Text(
-              'Continue step by step. Inventory updates only after stock in.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: scheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-        if (!bulk.status.isActive)
-          BulkOutlineGroup(
-            child: Row(
-              children: [
-                Icon(Icons.check_circle, color: scheme.primary),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Text(
-                    '${bulk.lines.length} types · ${bulk.actualUnitCount} units in inventory',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
+              child: Row(
+                children: [
+                  MetroIconButton(
+                    semanticLabel: 'Back',
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    icon: const Icon(Icons.arrow_back, size: 20),
+                    style: const MetroButtonStyle(
+                      minimumSize: Size.square(40),
+                      padding: EdgeInsets.zero,
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _MetricGrid extends StatelessWidget {
-  const _MetricGrid({required this.bulk});
-
-  final BulkShipment bulk;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final tiles = <Widget>[
-      _MetricTile(label: 'Lot price', value: formatMoney(bulk.agreedPrice)),
-      _MetricTile(label: 'Delivery', value: formatMoney(bulk.deliveryCharge)),
-      _MetricTile(label: 'Total paid', value: formatMoney(bulk.totalPaid)),
-      if (bulk.actualUnitCount > 0)
-        _MetricTile(
-          label: 'Cost / unit',
-          value: formatMoney(bulk.defaultUnitCost),
-        ),
-    ];
-
-    return BulkOutlineGroup(
-      padding: const EdgeInsets.all(AppSpacing.sm),
-      child: Wrap(
-        spacing: AppSpacing.sm,
-        runSpacing: AppSpacing.sm,
-        children: tiles
-            .map(
-              (t) => SizedBox(
-                width:
-                    (MediaQuery.sizeOf(context).width -
-                            AppSpacing.lg * 2 -
-                            AppSpacing.sm * 3) /
-                        2,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: scheme.outlineVariant),
+                  Expanded(
+                    child: Text(
+                      bulk.status.label.toLowerCase(),
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            color: metro.colors.accent,
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    child: t,
-                  ),
-                ),
+                ],
               ),
-            )
-            .toList(),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                MetroSpacing.lg,
+                MetroSpacing.xs,
+                MetroSpacing.lg,
+                MetroSpacing.sm,
+              ),
+              child: BulkProgressStepper(
+                current: bulk.status,
+                shipmentId: bulk.id,
+                selectedStepIndex: _page,
+                onStepSelected: (i) => _goToPage(i),
+              ),
+            ),
+            Expanded(
+              child: MetroPanoramaView(
+                title: bulk.sellerLabel,
+                controller: _panorama,
+                initialSection: _page,
+                sectionPeek: MetroSpacing.xl,
+                onSectionChanged: (i) => setState(() => _page = i),
+                titleStyle: ShopMetroTypography.panoramaTitle(metro.colors.foreground)
+                    .copyWith(fontSize: 56),
+                sections: [
+                  for (var i = 0; i < _stepTitles.length; i++)
+                    MetroPanoramaSection(
+                      title: _stepTitles[i],
+                      wrapInScroll: false,
+                      titleStyle: ShopMetroTypography.sectionHeader(
+                        metro.colors.mutedForeground,
+                      ).copyWith(fontSize: 28),
+                      child: switch (i) {
+                        0 => BulkStepOrderScreen(
+                            shipmentId: widget.shipmentId,
+                            embedded: true,
+                          ),
+                        1 => BulkReceiveScreen(
+                            shipmentId: widget.shipmentId,
+                            readOnly:
+                                BulkStepAccess.isReadOnly(bulk.status, 1),
+                            embedded: true,
+                            onStepCompleted: _advanceAfterStep,
+                          ),
+                        2 => BulkCountScreen(
+                            shipmentId: widget.shipmentId,
+                            readOnly:
+                                BulkStepAccess.isReadOnly(bulk.status, 2),
+                            embedded: true,
+                            onStepCompleted: _advanceAfterStep,
+                          ),
+                        3 => BulkPriceScreen(
+                            shipmentId: widget.shipmentId,
+                            readOnly:
+                                BulkStepAccess.isReadOnly(bulk.status, 3),
+                            embedded: true,
+                            onStepCompleted: _advanceAfterStep,
+                          ),
+                        _ => BulkStepStockScreen(
+                            shipmentId: widget.shipmentId,
+                            readOnly:
+                                BulkStepAccess.isReadOnly(bulk.status, 4),
+                            embedded: true,
+                          ),
+                      },
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-    );
-  }
-}
-
-class _MetricTile extends StatelessWidget {
-  const _MetricTile({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        Text(
-          value,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
+      bottomNavigationBar: bottom == null
+          ? null
+          : SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                  AppSpacing.lg,
+                  AppSpacing.lg,
+                ),
+                child: bottom,
+              ),
+            ),
     );
   }
 }

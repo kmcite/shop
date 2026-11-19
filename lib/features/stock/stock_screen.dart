@@ -2,11 +2,12 @@
 library;
 
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/material.dart';
 import 'package:shop/business/shop_cubit.dart';
 
 import '../../models/shop_item_model.dart';
 import '../../ui/spacing.dart';
+import '../design/metro.dart';
 import '../widgets/bulk_shipment_card.dart';
 import '../widgets/empty_views.dart';
 import '../widgets/search_field.dart';
@@ -38,7 +39,7 @@ class _StockScreenState extends State<StockScreen> {
     final lowCount = all.where((i) => i.inStock && i.quantity <= 3).length;
     final outCount = all.where((i) => !i.inStock).length;
 
-    return RefreshIndicator(
+    return MetroRefresh(
       onRefresh: () => context.read<ShopCubit>().refreshInventoryFlow(),
       child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(
@@ -208,25 +209,13 @@ class _StockFilterChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: AppSpacing.sm,
-      runSpacing: AppSpacing.sm,
-      children: [
-        FilterChip(
-          label: const Text('All'),
-          selected: filter == _StockFilter.all,
-          onSelected: (_) => onChanged(_StockFilter.all),
-        ),
-        FilterChip(
-          label: Text('Low ($lowCount)'),
-          selected: filter == _StockFilter.low,
-          onSelected: (_) => onChanged(_StockFilter.low),
-        ),
-        FilterChip(
-          label: Text('Out ($outCount)'),
-          selected: filter == _StockFilter.out,
-          onSelected: (_) => onChanged(_StockFilter.out),
-        ),
+    return MetroPivotBar<_StockFilter>(
+      selected: filter,
+      onSelected: onChanged,
+      options: [
+        const MetroPivotOption(value: _StockFilter.all, label: 'all'),
+        MetroPivotOption(value: _StockFilter.low, label: 'low ($lowCount)'),
+        MetroPivotOption(value: _StockFilter.out, label: 'out ($outCount)'),
       ],
     );
   }

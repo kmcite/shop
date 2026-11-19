@@ -1,20 +1,30 @@
 import 'dart:io';
 
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/material.dart';
 
+import '../features/design/metro.dart';
 import '../models/shop_item_model.dart';
 
 /// Shows an item's photo when [imagePath] points to a readable file,
 /// otherwise renders [fallback] (or a plain surface when none is given).
-class const ItemPhoto({
-  super.key,
-  required final String? imagePath,
-  final double? width,
-  final double? height,
-  final double borderRadius = 16,
-  final BoxFit fit = BoxFit.cover,
-  final Widget? fallback,
-}) extends StatelessWidget {
+class ItemPhoto extends StatelessWidget {
+  const ItemPhoto({
+    super.key,
+    required this.imagePath,
+    this.width,
+    this.height,
+    this.borderRadius = 0,
+    this.fit = BoxFit.cover,
+    this.fallback,
+  });
+
+  final String? imagePath;
+  final double? width;
+  final double? height;
+  final double borderRadius;
+  final BoxFit fit;
+  final Widget? fallback;
+
   @override
   Widget build(BuildContext context) {
     final path = imagePath;
@@ -25,7 +35,7 @@ class const ItemPhoto({
         Container(
           width: width,
           height: height,
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          color: MetroTheme.of(context).surfaceColor,
         );
 
     if (path == null) return placeholder();
@@ -43,8 +53,7 @@ class const ItemPhoto({
   }
 }
 
-/// Small rounded photo preview with the item's initial letter as fallback —
-/// used on grid tiles and sheet headers.
+/// Sharp Metro photo tile with letter badge fallback — used on list rows.
 class ItemPhotoBadge extends StatelessWidget {
   const ItemPhotoBadge({
     super.key,
@@ -57,8 +66,7 @@ class ItemPhotoBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final metro = MetroTheme.of(context);
     final name = item.name;
     final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
 
@@ -66,21 +74,22 @@ class ItemPhotoBadge extends StatelessWidget {
       imagePath: item.imagePath,
       width: size,
       height: size,
-      borderRadius: size * 0.28,
+      borderRadius: 0,
       fallback: Container(
         width: size,
         height: size,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(size * 0.28),
-          color: scheme.primary.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.zero,
+          color: metro.colors.accent.withValues(alpha: 0.12),
+          border: Border.all(color: metro.colors.accent, width: 1.5),
         ),
         child: Center(
           child: Text(
             initial,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: scheme.primary,
-            ),
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: metro.colors.accent,
+                ),
           ),
         ),
       ),

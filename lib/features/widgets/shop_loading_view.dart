@@ -1,6 +1,7 @@
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/material.dart';
 
 import '../../ui/spacing.dart';
+import '../design/metro.dart';
 
 /// Shown while the scope boots and the shared database connects.
 class ShopLoadingView extends StatelessWidget {
@@ -9,33 +10,33 @@ class ShopLoadingView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final metro = MetroTheme.of(context);
 
     return Scaffold(
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircleAvatar(
-              radius: 48,
-              backgroundColor: theme.colorScheme.primary.withValues(
-                alpha: 0.12,
-              ),
-              child: Icon(
-                Icons.storefront_rounded,
-                size: 44,
-                color: theme.colorScheme.primary,
-              ),
+            MetroBadge(
+              icon: Icons.storefront_outlined,
+              size: 96,
+              filled: false,
             ),
             const SizedBox(height: AppSpacing.xxl),
-            const SizedBox(
+            SizedBox(
               width: 140,
-              child: LinearProgressIndicator(minHeight: 4),
+              child: LinearProgressIndicator(
+                minHeight: 3,
+                color: metro.colors.accent,
+                backgroundColor: metro.colors.mutedForeground.withValues(alpha: 0.2),
+              ),
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(
-              'Connecting to database\u2026',
+              'connecting to database\u2026',
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+                color: metro.colors.mutedForeground,
+                fontWeight: FontWeight.w300,
               ),
             ),
           ],
