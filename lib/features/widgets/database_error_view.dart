@@ -1,8 +1,6 @@
-import 'package:any/any.dart';
-import 'package:flutter/material.dart';
-import 'package:shared_database/shared_database.dart';
-
-import '../../commands/initialize_command.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:shop/business/shop_cubit.dart';
 import '../../ui/spacing.dart';
 
 class DatabaseErrorView extends StatelessWidget {
@@ -43,13 +41,13 @@ class DatabaseErrorView extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.md),
               Text(
-                'Install the manager app (${SharedDatabase.instance.collectionsDetailed()}), '
-                'open it once, then tap Retry.',
+                'The database lives in Documents/dev.loner.shared_database/ on this device. '
+                'Free storage space, then tap Retry.',
                 style: theme.textTheme.bodySmall,
               ),
               const Spacer(),
               FilledButton.icon(
-                onPressed: () => context(const InitializeCommand()),
+                onPressed: () => context.read<ShopCubit>().initialize(),
                 icon: const Icon(Icons.refresh),
                 label: const Text('Retry connection'),
               ),

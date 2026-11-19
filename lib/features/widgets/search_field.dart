@@ -1,7 +1,7 @@
 /// Controller-less search input for the home page.
 library;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// The field owns its text through [TextFormField.initialValue] and only
 /// reports edits via [onChanged]; [ShopState.searchQuery] stays the source

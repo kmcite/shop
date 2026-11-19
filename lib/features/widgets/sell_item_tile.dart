@@ -1,7 +1,7 @@
 /// Portrait list row optimized for one-thumb selling.
 library;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 
 import '../../models/shop_item_model.dart';

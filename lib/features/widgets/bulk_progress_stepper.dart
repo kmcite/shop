@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../models/bulk_shipment_model.dart';
 import '../../ui/spacing.dart';
-import '../screens/bulk/bulk_step_access.dart';
-import '../screens/bulk/bulk_step_navigation.dart';
+import '../bulk/bulk_step_access.dart';
+import '../bulk/bulk_step_navigation.dart';
 
 /// Horizontal progress for the bulk lifecycle (order → receive → count → price).
 class BulkProgressStepper extends StatelessWidget {

@@ -2,10 +2,9 @@
 /// revenue, units sold and estimated profit — all read from [ShopState].
 library;
 
-import 'package:any/any.dart';
-import 'package:flutter/material.dart';
-
-import '../../states/shop_state.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:shop/business/shop_cubit.dart';
 import '../../ui/format.dart';
 import '../../ui/spacing.dart';
 
@@ -16,7 +15,7 @@ class SalesSummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final sales = context.of<ShopState>().sales;
+    final sales = context.watch<ShopCubit>().state.sales;
 
     final now = DateTime.now();
     var revenue = 0.0;

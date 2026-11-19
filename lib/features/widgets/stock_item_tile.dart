@@ -1,7 +1,7 @@
 /// Portrait-friendly inventory row: photo, pricing, stock, actions.
 library;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../models/shop_item_model.dart';
 import '../../ui/format.dart';

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Shared spacing scale and reusable paddings so every screen uses the
 /// same rhythm: 16 between sections, 24 inside sheets, 32 for empty states.

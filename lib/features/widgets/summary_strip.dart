@@ -1,10 +1,9 @@
 /// Horizontally scrollable metrics row shown at the top of the home page.
 library;
 
-import 'package:any/any.dart';
-import 'package:flutter/material.dart';
-
-import '../../states/shop_state.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:shop/business/shop_cubit.dart';
 import '../../ui/format.dart';
 import '../../ui/spacing.dart';
 import '../../ui/widgets/metric_chip.dart';
@@ -14,7 +13,7 @@ class SummaryStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final items = context.of<ShopState>().items;
+    final items = context.watch<ShopCubit>().state.items;
     final sku = items.length;
     final units = items.fold<int>(0, (sum, i) => sum + i.quantity);
     final retail = items.fold<double>(

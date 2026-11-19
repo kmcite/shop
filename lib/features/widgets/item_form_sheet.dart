@@ -1,9 +1,8 @@
-import 'package:any/any.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:shop/business/item_form_cubit.dart';
 
-import '../../commands/item_form_commands.dart';
 import '../../models/shop_item_model.dart';
-import '../../states/item_form_state.dart';
 import '../../ui/spacing.dart';
 import 'item_form_sheet_fields.dart';
 
@@ -13,7 +12,7 @@ Future<ShopItem?> openItemFormSheet(
   BuildContext context, {
   required ShopItem existing,
 }) async {
-  await context(BeginItemFormCommand(existing));
+  context.read<ItemFormCubit>().begin(existing);
   if (!context.mounted) return null;
 
   return showModalBottomSheet<ShopItem>(
@@ -30,10 +29,11 @@ class _ItemFormSheet extends StatelessWidget {
   final ShopItem existing;
 
   Future<void> _submit(BuildContext context) async {
-    await context(const SubmitItemFormCommand());
+    final formCubit = context.read<ItemFormCubit>();
+    formCubit.validateForSubmit();
     if (!context.mounted) return;
 
-    final form = context.of<ItemFormState>();
+    final form = context.read<ItemFormCubit>().state;
     if (form.isValid) Navigator.pop(context, form.draft(existing));
   }
 

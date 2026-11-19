@@ -1,8 +1,7 @@
-import 'package:any/any.dart';
-import 'package:flutter/material.dart';
-
-import '../../commands/complete_sell_cart_flow_command.dart';
-import '../../states/sell_cart_state.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:shop/business/sell_cart_cubit.dart';
+import 'package:shop/business/shop_cubit.dart';
 import '../../ui/format.dart';
 import '../../ui/spacing.dart';
 
@@ -12,7 +11,7 @@ class SellCartBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cart = context.of<SellCartState>();
+    final cart = context.watch<SellCartCubit>().state;
     if (cart.isEmpty) return const SizedBox.shrink();
 
     var total = 0.0;
@@ -56,8 +55,9 @@ class SellCartBar extends StatelessWidget {
                 ),
               ),
               FilledButton(
-                onPressed: () =>
-                    context(const CompleteSellCartFlowCommand()),
+                onPressed: () => context.read<ShopCubit>().completeSellCartFlow(
+                      context.read<SellCartCubit>(),
+                    ),
                 child: const Text('Review & sell'),
               ),
             ],

@@ -1,10 +1,10 @@
-import 'package:any/any.dart';
-import 'package:flutter/material.dart';
-import '../../commands/sell_cart_commands.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:shop/business/sell_cart_cubit.dart';
+import 'package:shop/business/shop_cubit.dart';
+
 import '../../models/sell_cart_line_model.dart';
 import '../../models/shop_item_model.dart';
-import '../../states/sell_cart_state.dart';
-import '../../states/shop_state.dart';
 import '../../ui/format.dart';
 import '../../ui/spacing.dart';
 
@@ -22,9 +22,9 @@ class _SellCheckoutSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cart = context.of<SellCartState>();
+    final cart = context.watch<SellCartCubit>().state;
     final items = {
-      for (final i in context.of<ShopState>().items) i.id: i,
+      for (final i in context.watch<ShopCubit>().state.items) i.id: i,
     };
     final bottom = MediaQuery.viewInsetsOf(context).bottom;
     final theme = Theme.of(context);
@@ -135,7 +135,8 @@ class _CheckoutLineCard extends StatelessWidget {
             ),
             IconButton(
               tooltip: 'Remove',
-              onPressed: () => context(RemoveSellCartLineCommand(index)),
+              onPressed: () =>
+                  context.read<SellCartCubit>().removeLine(index),
               icon: Icon(
                 Icons.close,
                 color: Theme.of(context).colorScheme.error,

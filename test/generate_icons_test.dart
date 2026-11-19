@@ -1,7 +1,7 @@
 // Dev-only asset generator: renders the app icon and splash logo to PNG
 // goldens, which are then post-processed into transparent foregrounds.
 // Run: flutter test --update-goldens test/generate_icons_test.dart
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _teal = Color(0xFF14B8A6);

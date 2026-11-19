@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
-import '../features/screens/bulk/bulk_history_screen.dart';
-import '../features/screens/bulk/bulk_order_screen.dart';
-import '../features/screens/bulk/bulk_shipment_hub_screen.dart';
+import '../features/bulk/bulk_history_screen.dart';
+import '../features/bulk/bulk_order_screen.dart';
+import '../features/bulk/bulk_shipment_hub_screen.dart';
 import '../features/widgets/item_form_sheet.dart';
 import '../features/widgets/restock_sheet.dart';
 import '../features/widgets/sell_checkout_sheet.dart';
@@ -11,7 +11,7 @@ import '../models/shop_item_model.dart';
 import '../ui/spacing.dart';
 
 /// Modal dialogs, sheets, and toasts for inventory flows — used from
-/// [Command]s that cannot take a [BuildContext].
+/// [ShopCubit] flow methods that cannot take a [BuildContext].
 abstract interface class ShopNavigator {
   bool get isMounted;
 

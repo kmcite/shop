@@ -1,10 +1,9 @@
-import 'package:any/any.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/services.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:shop/business/item_form_cubit.dart';
 
-import '../../commands/item_form_commands.dart';
 import '../../repositories/item_photo_store.dart';
-import '../../states/item_form_state.dart';
 import '../../ui/item_photo.dart';
 import '../../ui/spacing.dart';
 
@@ -17,13 +16,13 @@ class ItemFormSheetFields extends StatelessWidget {
   Future<void> _pickPhoto(BuildContext context) async {
     final path = await ItemPhotoStore.pickAndStore(context);
     if (path != null && context.mounted) {
-      await context(SetItemPhotoCommand(path));
+      context.read<ItemFormCubit>().setPhoto(path);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final form = context.of<ItemFormState>();
+    final form = context.watch<ItemFormCubit>().state;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -57,7 +56,8 @@ class ItemFormSheetFields extends StatelessWidget {
                   ),
                   if (form.imagePath != null)
                     TextButton(
-                      onPressed: () => context(const SetItemPhotoCommand(null)),
+                      onPressed: () =>
+                          context.read<ItemFormCubit>().setPhoto(null),
                       child: const Text('Remove'),
                     ),
                 ],
@@ -68,7 +68,7 @@ class ItemFormSheetFields extends StatelessWidget {
         const SizedBox(height: AppSpacing.lg),
         TextFormField(
           initialValue: form.name,
-          onChanged: (value) => context(SetItemNameCommand(value)),
+          onChanged: (value) => context.read<ItemFormCubit>().setName(value),
           decoration: InputDecoration(
             labelText: 'Item name',
             prefixIcon: const Icon(Icons.label_outline),
@@ -81,7 +81,7 @@ class ItemFormSheetFields extends StatelessWidget {
         const SizedBox(height: AppSpacing.lg),
         TextFormField(
           initialValue: form.price,
-          onChanged: (value) => context(SetItemPriceCommand(value)),
+          onChanged: (value) => context.read<ItemFormCubit>().setPrice(value),
           decoration: InputDecoration(
             labelText: 'Sell price',
             helperText: 'What you expect to charge per unit',
@@ -97,7 +97,8 @@ class ItemFormSheetFields extends StatelessWidget {
         const SizedBox(height: AppSpacing.lg),
         TextFormField(
           initialValue: form.costPrice,
-          onChanged: (value) => context(SetItemCostPriceCommand(value)),
+          onChanged: (value) =>
+              context.read<ItemFormCubit>().setCostPrice(value),
           decoration: InputDecoration(
             labelText: 'Cost per unit',
             helperText: 'What you paid per unit in the bulk',
@@ -113,7 +114,8 @@ class ItemFormSheetFields extends StatelessWidget {
         const SizedBox(height: AppSpacing.lg),
         TextFormField(
           initialValue: form.quantity,
-          onChanged: (value) => context(SetItemQuantityCommand(value)),
+          onChanged: (value) =>
+              context.read<ItemFormCubit>().setQuantity(value),
           decoration: InputDecoration(
             labelText: isEdit ? 'Stock on hand' : 'Units received',
             helperText: isEdit
